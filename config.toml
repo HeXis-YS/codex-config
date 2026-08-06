@@ -1,0 +1,32 @@
+ Codex configuration for Docker sandbox
+# This configuration enables "yolo mode" - no approvals, full access
+
+approval_policy = "never"
+sandbox_mode = "danger-full-access"
+mcp_oauth_credentials_store = "file"
+
+model_provider = "custom"
+model = "gpt-5.6-luna"
+model_reasoning_effort = "max"
+model_context_window = 272000
+model_auto_compact_token_limit = 240000
+web_search = "live"
+approvals_reviewer = "user"
+plan_mode_reasoning_effort = "max"
+
+[features]
+goals = true
+multi_agent = true
+multi_agent_v2 = true
+
+[model_providers.custom]
+name = "Yunwu"
+base_url = "https://yunwu.ai/v1"
+wire_api = "responses"
+requires_openai_auth = true
+
+[agents]
+enabled = true
+max_concurrent_threads_per_session = 10
+default_subagent_model = "gpt-5.6-luna"
+default_subagent_reasoning_effort = "max"
