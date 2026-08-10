@@ -44,7 +44,8 @@ script_dir="$(CDPATH= cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)"
 codex_dir="$HOME/.codex"
 git_ignore_dir="$HOME/.config/git"
 
-for source_file in config.toml AGENTS.md; do
+# Keep the source outside Codex's discovery names so this repository does not load it twice.
+for source_file in config.toml AGENTS.global.md; do
     [ -f "$script_dir/$source_file" ] || die "required source file is missing: $script_dir/$source_file"
 done
 [ -d "$script_dir/models" ] || die "required model directory is missing: $script_dir/models"
@@ -71,7 +72,7 @@ merged_models="$tmp_dir/merged-models.json"
 
 mkdir -p "$codex_dir" "$git_ignore_dir"
 install -m 0644 "$script_dir/config.toml" "$codex_dir/config.toml"
-install -m 0644 "$script_dir/AGENTS.md" "$codex_dir/AGENTS.md"
+install -m 0644 "$script_dir/AGENTS.global.md" "$codex_dir/AGENTS.md"
 printf '%s\n' '.codex' > "$git_ignore_dir/ignore"
 
 if ! codex debug models --bundled > "$official_models"; then
