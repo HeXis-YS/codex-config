@@ -6,7 +6,7 @@
 
 | 路径 | 作用 |
 | --- | --- |
-| [`config.toml`](config.toml) | Codex 全局配置：自定义模型服务、实时联网搜索、长上下文和多 Agent 设置。 |
+| [`config.toml`](config.toml) | Codex 全局配置：自定义模型服务、实时联网搜索、Memory、长上下文和多 Agent 设置。 |
 | [`AGENTS.global.md`](AGENTS.global.md) | 全局 Agent 规则的仓库源文件；安装时复制为 `~/.codex/AGENTS.md`。文件名带有 `.global`，用于避免仓库副本被 Codex 重复加载。 |
 | [`models/`](models/) | 自定义模型目录。每个 JSON 文件都是一个 `{ "models": [...] }` 模型目录片段。 |
 | [`install.sh`](install.sh) | 将配置和模型目录安装到当前用户的 Codex 目录。 |
@@ -71,6 +71,10 @@ jq -r '.models[].slug' "$HOME/.codex/models.json"
 
 修改配置、规则或 `models/*.json` 后提交 Git；在其他环境执行 `git pull` 后重新运行 `./install.sh` 即可同步。重新安装会覆盖上述 `~/.codex` 文件和 `~/.agents/skills/analyze-project/`，并重新获取官方模型目录。
 
+### 任务恢复
+
+非简单任务同时使用内置 Plan 清单和 `.codex/todo.md`：Plan 在每个步骤完成时立即更新，todo 只在关键状态、证据、阻塞或下一动作变化时维护持久笔记。`memories` 已启用，但只作为跨会话背景补充；恢复时以用户最新指令和可观察工作区为准，其次是 todo，最后才是 Memory。`.codex/` 仍是本地工作流目录，不提交到仓库。
+
 新增模型时，保持文件结构为：
 
 ```json
@@ -94,7 +98,7 @@ jq -r '.models[].slug' "$HOME/.codex/models.json"
 - `approval_policy = "never"`
 - `sandbox_mode = "danger-full-access"`
 - `web_search = "live"`
-- 启用 goals 和 multi-agent，最多 8 个并发线程
+- 启用 memories、goals 和 multi-agent，最多 8 个并发线程
 
 这适合个人信任的开发容器或隔离环境，不适合直接用于不受信任的代码、生产主机或含敏感数据的工作区。若环境风险不同，应先调整 `config.toml`，再运行安装脚本。
 
