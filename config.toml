@@ -21,6 +21,7 @@ name = "hexis.moe"
 base_url = "https://api.hexis.moe/v1"
 wire_api = "responses"
 requires_openai_auth = true
+supports_standalone_web_search = true
 
 [agents]
 enabled = true
