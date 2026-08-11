@@ -43,12 +43,17 @@ fi
 script_dir="$(CDPATH= cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)"
 codex_dir="$HOME/.codex"
 git_ignore_dir="$HOME/.config/git"
+skill_source_dir="$script_dir/skills/analyze-project"
+skill_install_dir="$HOME/.agents/skills/analyze-project"
 
 # Keep the source outside Codex's discovery names so this repository does not load it twice.
 for source_file in config.toml AGENTS.global.md; do
     [ -f "$script_dir/$source_file" ] || die "required source file is missing: $script_dir/$source_file"
 done
 [ -d "$script_dir/models" ] || die "required model directory is missing: $script_dir/models"
+[ -f "$skill_source_dir/SKILL.md" ] || die "required skill file is missing: $skill_source_dir/SKILL.md"
+[ -f "$skill_source_dir/agents/openai.yaml" ] \
+    || die "required skill metadata is missing: $skill_source_dir/agents/openai.yaml"
 
 shopt -s nullglob
 model_files=("$script_dir"/models/*.json)
@@ -70,9 +75,11 @@ tmp_dir="$(mktemp -d "${TMPDIR:-/tmp}/codex-config.XXXXXX")" || die 'failed to c
 official_models="$tmp_dir/models.json"
 merged_models="$tmp_dir/merged-models.json"
 
-mkdir -p "$codex_dir" "$git_ignore_dir"
+mkdir -p "$codex_dir" "$git_ignore_dir" "$skill_install_dir/agents"
 install -m 0644 "$script_dir/config.toml" "$codex_dir/config.toml"
 install -m 0644 "$script_dir/AGENTS.global.md" "$codex_dir/AGENTS.md"
+install -m 0644 "$skill_source_dir/SKILL.md" "$skill_install_dir/SKILL.md"
+install -m 0644 "$skill_source_dir/agents/openai.yaml" "$skill_install_dir/agents/openai.yaml"
 printf '%s\n' '.codex' > "$git_ignore_dir/ignore"
 
 if ! codex debug models --bundled > "$official_models"; then
@@ -129,4 +136,4 @@ mv -f "$staged_models" "$codex_dir/models.json" \
 staged_models=""
 
 model_count="$(jq '.models | length' "$codex_dir/models.json")"
-printf 'Installed Codex configuration and %s models to %s\n' "$model_count" "$codex_dir"
+printf 'Installed Codex configuration, analyze-project skill, and %s models\n' "$model_count"
