@@ -1,6 +1,6 @@
 ---
 name: analyze
-description: Perform fast, read-only analysis and deliver an evidence-based answer without modifying the target. Use when the user asks to analyze, inspect, understand, explain, investigate, assess, compare, review, or diagnose a repository, subsystem, code, files, logs, history, build or test results, or other workspace artifacts and wants analysis rather than implementation. For broad requests such as "分析这个项目", produce a rapid breadth-first overview before any deep dive. Do not use when the requested outcome includes editing, fixing, generating, migrating, or other target changes, unless the user explicitly separates a read-only analysis phase.
+description: Fast, read-only analysis of repositories, subsystems, code, files, logs, history, build or test results, and other workspace artifacts. Produces evidence-based breadth-first overviews and focused follow-up analysis without modifying the target.
 ---
 
 # 快速只读分析
