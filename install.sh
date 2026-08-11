@@ -43,8 +43,8 @@ fi
 script_dir="$(CDPATH= cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)"
 codex_dir="$HOME/.codex"
 git_ignore_dir="$HOME/.config/git"
-skill_source_dir="$script_dir/skills/analyze-project"
-skill_install_dir="$HOME/.agents/skills/analyze-project"
+skill_source_dir="$script_dir/skills/analyze"
+skill_install_dir="$HOME/.agents/skills/analyze"
 
 # Keep the source outside Codex's discovery names so this repository does not load it twice.
 for source_file in config.toml AGENTS.global.md; do
@@ -136,4 +136,4 @@ mv -f "$staged_models" "$codex_dir/models.json" \
 staged_models=""
 
 model_count="$(jq '.models | length' "$codex_dir/models.json")"
-printf 'Installed Codex configuration, analyze-project skill, and %s models\n' "$model_count"
+printf 'Installed Codex configuration, analyze skill, and %s models\n' "$model_count"

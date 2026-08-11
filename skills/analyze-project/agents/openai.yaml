@@ -1,4 +1,0 @@
-interface:
-  display_name: "分析项目"
-  short_description: "沿项目既有主路径完成可验证、可复核的代码库技术分析"
-  default_prompt: "使用 $analyze-project 分析当前项目并生成有证据的技术报告。"

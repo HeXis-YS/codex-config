@@ -1,6 +1,6 @@
 # codex-config
 
-个人使用的 Codex 配置仓库。配置、全局 Agent 规则和自定义模型目录都通过 Git 管理，便于持续迭代，并在新的环境中快速恢复相同的工作方式。
+个人使用的 Codex 配置仓库。配置、全局 Agent 规则、个人技能和自定义模型目录都通过 Git 管理，便于持续迭代，并在新的环境中快速恢复相同的工作方式。
 
 ## 仓库内容
 
@@ -9,8 +9,8 @@
 | [`config.toml`](config.toml) | Codex 全局配置：自定义模型服务、实时联网搜索、长上下文和多 Agent 设置。 |
 | [`AGENTS.global.md`](AGENTS.global.md) | 全局 Agent 规则的仓库源文件；安装时复制为 `~/.codex/AGENTS.md`。文件名带有 `.global`，用于避免仓库副本被 Codex 重复加载。 |
 | [`models/`](models/) | 自定义模型目录。每个 JSON 文件都是一个 `{ "models": [...] }` 模型目录片段。 |
-| [`install.sh`](install.sh) | 将配置和模型目录安装到当前用户的 Codex 目录。 |
-| [`skills/`](skills/) | 随仓库版本化的个人技能；当前安装脚本会安装 `analyze-project` 技能。 |
+| [`install.sh`](install.sh) | 将配置、个人技能和模型目录安装到当前用户环境。 |
+| [`skills/`](skills/) | 随仓库版本化的个人技能；当前安装脚本会安装 `analyze` 技能。 |
 | [`.gitignore`](.gitignore) | 忽略本地认证文件 `auth.json`。 |
 
 仓库不保存 API 密钥、登录状态或其他运行时凭据。认证应在目标环境中单独完成。
@@ -31,8 +31,8 @@ cd codex-config
 ~/.codex/config.toml   <- config.toml
 ~/.codex/AGENTS.md     <- AGENTS.global.md
 ~/.codex/models.json   <- 官方模型目录与 models/*.json 合并后的目录
-~/.agents/skills/analyze-project/
-                         <- skills/analyze-project/
+~/.agents/skills/analyze/
+                 <- skills/analyze/
 ```
 
 ### 前置条件
@@ -47,7 +47,7 @@ cd codex-config
 `install.sh` 会先校验依赖，然后：
 
 1. 创建 `~/.codex`、`~/.config/git` 和技能安装目录。
-2. 安装 `config.toml`、全局规则和 `analyze-project` 技能。
+2. 安装 `config.toml`、全局规则和 `analyze` 技能。
 3. 读取 Codex 自带模型目录，校验仓库中的模型片段，并按 `slug` 合并；仓库模型与官方模型同名时，以仓库版本覆盖。
 4. 将合并结果写入 `~/.codex/models.json`，使用临时文件替换目标文件，避免中断时留下不完整目录。
 5. 将 `.codex` 写入 `~/.config/git/ignore`。
@@ -59,6 +59,7 @@ cd codex-config
 ```bash
 test -f "$HOME/.codex/config.toml"
 test -f "$HOME/.codex/AGENTS.md"
+test -f "$HOME/.agents/skills/analyze/SKILL.md"
 jq -r '.models[].slug' "$HOME/.codex/models.json"
 ```
 
@@ -69,7 +70,7 @@ jq -r '.models[].slug' "$HOME/.codex/models.json"
 
 ## 日常迭代与迁移
 
-修改配置、规则或 `models/*.json` 后提交 Git；在其他环境执行 `git pull` 后重新运行 `./install.sh` 即可同步。重新安装会覆盖上述 `~/.codex` 文件和 `~/.agents/skills/analyze-project/`，并重新获取官方模型目录。
+修改配置、规则、`skills/` 或 `models/*.json` 后提交 Git；在其他环境执行 `git pull` 后重新运行 `./install.sh` 即可同步。重新安装会覆盖上述 `~/.codex` 文件和 `~/.agents/skills/analyze/`，并重新获取官方模型目录。
 
 新增模型时，保持文件结构为：
 
