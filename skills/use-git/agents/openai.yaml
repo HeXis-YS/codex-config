@@ -1,4 +1,0 @@
-interface:
-  display_name: "使用 Git"
-  short_description: "检查工作区、管理历史与变更，并用清晰提交保持全过程可追溯"
-  default_prompt: "使用 $use-git 管理当前任务的工作区、历史和提交。"

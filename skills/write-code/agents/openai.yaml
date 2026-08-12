@@ -1,4 +1,0 @@
-interface:
-  display_name: "编写代码"
-  short_description: "实现、修复与验证代码，交付便于持续开发、维护和审查的项目变更"
-  default_prompt: "使用 $write-code 在当前仓库完成这项代码修改，确保项目便于后续 Agent 接手和人类工程师维护审查。"

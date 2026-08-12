@@ -43,29 +43,18 @@ fi
 script_dir="$(CDPATH= cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)"
 codex_dir="$HOME/.codex"
 git_ignore_dir="$HOME/.config/git"
-skills_source_dir="$script_dir/skills"
 skills_install_dir="$HOME/.agents/skills"
+retired_skills=(analyze write-code use-git)
 
 # Keep the source outside Codex's discovery names so this repository does not load it twice.
 for source_file in config.toml AGENTS.global.md; do
     [ -f "$script_dir/$source_file" ] || die "required source file is missing: $script_dir/$source_file"
 done
 [ -d "$script_dir/models" ] || die "required model directory is missing: $script_dir/models"
-[ -d "$skills_source_dir" ] || die "required skill directory is missing: $skills_source_dir"
 
 shopt -s nullglob
 model_files=("$script_dir"/models/*.json)
-skill_source_dirs=("$skills_source_dir"/*)
 shopt -u nullglob
-
-[ "${#skill_source_dirs[@]}" -gt 0 ] || die "no skills were found in $skills_source_dir"
-for skill_source_dir in "${skill_source_dirs[@]}"; do
-    [ -d "$skill_source_dir" ] || die "skill source is not a directory: $skill_source_dir"
-    [ -f "$skill_source_dir/SKILL.md" ] \
-        || die "required skill file is missing: $skill_source_dir/SKILL.md"
-    [ -f "$skill_source_dir/agents/openai.yaml" ] \
-        || die "required skill metadata is missing: $skill_source_dir/agents/openai.yaml"
-done
 
 tmp_dir=""
 staged_models=""
@@ -83,14 +72,15 @@ tmp_dir="$(mktemp -d "${TMPDIR:-/tmp}/codex-config.XXXXXX")" || die 'failed to c
 official_models="$tmp_dir/models.json"
 merged_models="$tmp_dir/merged-models.json"
 
-mkdir -p "$codex_dir" "$git_ignore_dir" "$skills_install_dir"
+mkdir -p "$codex_dir" "$git_ignore_dir"
 install -m 0644 "$script_dir/config.toml" "$codex_dir/config.toml"
 install -m 0644 "$script_dir/AGENTS.global.md" "$codex_dir/AGENTS.md"
-for skill_source_dir in "${skill_source_dirs[@]}"; do
-    skill_name="${skill_source_dir##*/}"
-    skill_install_dir="$skills_install_dir/$skill_name"
-    mkdir -p "$skill_install_dir"
-    cp -a "$skill_source_dir/." "$skill_install_dir/"
+# Remove only the skill names previously managed by this repository.
+for retired_skill in "${retired_skills[@]}"; do
+    retired_skill_dir="$skills_install_dir/$retired_skill"
+    if [ -e "$retired_skill_dir" ] || [ -L "$retired_skill_dir" ]; then
+        rm -rf -- "$retired_skill_dir"
+    fi
 done
 printf '%s\n' '.codex' > "$git_ignore_dir/ignore"
 
@@ -148,5 +138,4 @@ mv -f "$staged_models" "$codex_dir/models.json" \
 staged_models=""
 
 model_count="$(jq '.models | length' "$codex_dir/models.json")"
-printf 'Installed Codex configuration, %s skills, and %s models\n' \
-    "${#skill_source_dirs[@]}" "$model_count"
+printf 'Installed Codex configuration and %s models to %s\n' "$model_count" "$codex_dir"

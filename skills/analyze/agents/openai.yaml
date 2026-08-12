@@ -1,4 +1,0 @@
-interface:
-  display_name: "快速只读分析"
-  short_description: "按用户提问范围快速建立概览或聚焦分析具体对象与问题"
-  default_prompt: "使用 $analyze 按我的提问范围对当前目标进行快速只读分析。"
