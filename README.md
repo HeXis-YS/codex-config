@@ -105,7 +105,7 @@ jq -r '.models[].slug' "$HOME/.codex/models.json"
 
 - `approval_policy = "never"`
 - `sandbox_mode = "danger-full-access"`
-- `web_search = "live"`
+- `web_search = "disabled"`：暂时禁用网页搜索，避免调用当前 API 站点不支持的 `web_search` 接口。
 - 启用 memories、goals 和 multi-agent，最多 8 个并发线程
 
 这适合个人信任的开发容器或隔离环境，不适合直接用于不受信任的代码、生产主机或含敏感数据的工作区。若环境风险不同，应先调整 `config.toml`，再运行安装脚本。

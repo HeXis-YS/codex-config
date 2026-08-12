@@ -8,7 +8,7 @@ mcp_oauth_credentials_store = "file"
 model_provider = "custom"
 model_context_window = 272000
 model_auto_compact_token_limit = 240000
-web_search = "live"
+web_search = "disabled"
 model_catalog_json = "~/.codex/models.json"
 
 [features]
@@ -21,7 +21,7 @@ multi_agent_v2 = true
 name = "hexis.moe"
 base_url = "https://api.hexis.moe/v1"
 requires_openai_auth = true
-supports_standalone_web_search = true
+supports_standalone_web_search = false
 
 [agents]
 enabled = true
