@@ -43,6 +43,8 @@ fi
 script_dir="$(CDPATH= cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)"
 codex_dir="$HOME/.codex"
 git_ignore_dir="$HOME/.config/git"
+skills_install_dir="$HOME/.agents/skills"
+retired_skills=(analyze write-code use-git)
 
 # Keep the source outside Codex's discovery names so this repository does not load it twice.
 for source_file in config.toml AGENTS.global.md; do
@@ -73,6 +75,13 @@ merged_models="$tmp_dir/merged-models.json"
 mkdir -p "$codex_dir" "$git_ignore_dir"
 install -m 0644 "$script_dir/config.toml" "$codex_dir/config.toml"
 install -m 0644 "$script_dir/AGENTS.global.md" "$codex_dir/AGENTS.md"
+# Remove only the skill names previously managed by this repository.
+for retired_skill in "${retired_skills[@]}"; do
+    retired_skill_dir="$skills_install_dir/$retired_skill"
+    if [ -e "$retired_skill_dir" ] || [ -L "$retired_skill_dir" ]; then
+        rm -rf -- "$retired_skill_dir"
+    fi
+done
 printf '%s\n' '.codex' > "$git_ignore_dir/ignore"
 
 if ! codex debug models --bundled > "$official_models"; then
