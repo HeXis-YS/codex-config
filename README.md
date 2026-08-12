@@ -6,8 +6,9 @@
 
 | 路径 | 作用 |
 | --- | --- |
+| [`AGENTS.md`](AGENTS.md) | 本仓库的项目级开发规则，用于约束全局规则和 skill 的编写与审查；不会被安装。 |
 | [`config.toml`](config.toml) | Codex 全局配置：自定义模型服务、实时联网搜索、Memory、长上下文和多 Agent 设置。 |
-| [`AGENTS.global.md`](AGENTS.global.md) | 全局 Agent 规则的仓库源文件；安装时复制为 `~/.codex/AGENTS.md`。文件名带有 `.global`，用于避免仓库副本被 Codex 重复加载。 |
+| [`AGENTS.global.md`](AGENTS.global.md) | 全局 Agent 规则的仓库源文件；安装时复制为 `~/.codex/AGENTS.md`。文件名带有 `.global`，使它不会在本仓库中作为项目级指令与 `AGENTS.md` 同时加载。 |
 | [`models/`](models/) | 自定义模型目录。每个 JSON 文件都是一个 `{ "models": [...] }` 模型目录片段。 |
 | [`install.sh`](install.sh) | 将配置、个人技能和模型目录安装到当前用户环境。 |
 | [`skills/`](skills/) | 随仓库版本化的个人技能；安装脚本会安装其中的全部 skill。 |
