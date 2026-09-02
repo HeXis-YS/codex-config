@@ -1,6 +1,6 @@
 interface:
   display_name: "写入经验"
-  short_description: "按事故记录格式写 .codex/lessons.md"
+  short_description: "仅按用户显式调用，将用户指定事故写入 .codex/lessons.md"
   default_prompt: "使用 $write-lessons 将用户指定的事故写入 .codex/lessons.md。"
 
 policy:

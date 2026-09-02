@@ -1,13 +1,9 @@
 ---
 name: write-lessons
-description: 在用户显式调用时，将用户指定的事故按 A-E 等级写成 .codex/lessons.md 事故记录；用户决定记录范围、等级和是否写入。
+description: 在用户显式调用时，将用户指定的事故写入 .codex/lessons.md；用户决定记录范围、等级和是否写入。
 ---
 
 # 写入 lessons.md
-
-## 调用边界
-
-- 仅在用户显式调用 `$write-lessons` 时执行；用户决定记录范围、等级和是否写入。
 
 ## 事故等级
 
