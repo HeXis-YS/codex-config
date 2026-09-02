@@ -1,0 +1,7 @@
+interface:
+  display_name: "维护任务笔记"
+  short_description: "创建或更新 .codex/todo.md 的任务恢复笔记，不清理历史记录"
+  default_prompt: "使用 $write-todo 更新当前任务的 .codex/todo.md。"
+
+policy:
+  allow_implicit_invocation: true

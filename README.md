@@ -32,6 +32,8 @@ cd codex-config
 ~/.codex/config.toml   <- config.toml
 ~/.codex/AGENTS.md     <- AGENTS.global.md
 ~/.codex/models.json   <- 官方模型目录与 models/*.json 合并后的目录
+~/.agents/skills/write-todo/
+                         <- skills/write-todo/
 ~/.agents/skills/write-lessons/
                          <- skills/write-lessons/
 ```
@@ -61,6 +63,7 @@ cd codex-config
 test -f "$HOME/.codex/config.toml"
 test -f "$HOME/.codex/AGENTS.md"
 cmp AGENTS.global.md "$HOME/.codex/AGENTS.md"
+test -f "$HOME/.agents/skills/write-todo/SKILL.md"
 test -f "$HOME/.agents/skills/write-lessons/SKILL.md"
 test ! -e "$HOME/.agents/skills/analyze" && test ! -L "$HOME/.agents/skills/analyze"
 test ! -e "$HOME/.agents/skills/write-code" && test ! -L "$HOME/.agents/skills/write-code"
@@ -79,7 +82,7 @@ jq -r '.models[].slug' "$HOME/.codex/models.json"
 
 ### 任务恢复
 
-非简单任务同时使用内置 Plan 清单和 `.codex/todo.md`：Plan 在每个步骤完成时立即更新，todo 只在关键状态、证据、阻塞或下一动作变化时维护持久笔记。`memories` 已启用，但只作为跨会话背景补充；恢复时以用户最新指令和可观察工作区为准，其次是 todo，最后才是 Memory。`.codex/` 仍是本地工作流目录，不提交到仓库。
+非简单任务同时使用内置 Plan 清单和 `.codex/todo.md`：Plan 在每个步骤完成时立即更新，todo 通过 `$write-todo` 在关键状态、证据、阻塞或下一动作变化时维护持久笔记，并保留已完成记录供追溯。`memories` 已启用，但只作为跨会话背景补充；恢复时以用户最新指令和可观察工作区为准，其次是 todo，最后才是 Memory。`.codex/` 仍是本地工作流目录，不提交到仓库。
 
 新增模型时，保持文件结构为：
 
