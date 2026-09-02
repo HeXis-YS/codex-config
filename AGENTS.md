@@ -1,6 +1,6 @@
 # AGENTS.md - 配置与规则维护规范
 
-本文件的作用域是 `codex-config` 仓库的维护。`AGENTS.global.md`、`config.toml`、`models/*`、`skills/*` 和 `install.sh` 是本仓库产出的可分发制品，根目录 `AGENTS.md` 是项目级开发规则。
+本文件的作用域是 `codex-config` 仓库的维护，只记录本项目特有且 `AGENTS.global.md` 未覆盖的规则；通用行为契约以 `AGENTS.global.md` 为唯一来源。`AGENTS.global.md`、`config.toml`、`models/*`、`skills/*` 和 `install.sh` 是本仓库产出的可分发制品，根目录 `AGENTS.md` 是项目级开发规则。
 
 ## 制品契约
 
