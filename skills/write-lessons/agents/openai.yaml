@@ -1,0 +1,4 @@
+interface:
+  display_name: "写入经验"
+  short_description: "按事故记录格式写 .codex/lessons.md"
+  default_prompt: "使用 $write-lessons 将本次教训写入 .codex/lessons.md。"

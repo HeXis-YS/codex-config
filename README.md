@@ -1,16 +1,17 @@
 # codex-config
 
-个人使用的 Codex 配置仓库。配置、全局 Agent 规则和自定义模型目录都通过 Git 管理，便于持续迭代，并在新的环境中快速恢复相同的工作方式。
+个人使用的 Codex 配置仓库。配置、全局 Agent 规则、个人技能和自定义模型目录都通过 Git 管理，便于持续迭代，并在新的环境中快速恢复相同的工作方式。
 
 ## 仓库内容
 
 | 路径 | 作用 |
 | --- | --- |
-| [`AGENTS.md`](AGENTS.md) | 本仓库的项目级开发规则，用于约束可分发配置和规则的编写与审查；不会被安装。 |
+| [`AGENTS.md`](AGENTS.md) | 本仓库的项目级开发规则，用于约束可分发配置、规则和技能的编写与审查；不会被安装。 |
 | [`config.toml`](config.toml) | Codex 全局配置：自定义模型服务、网页搜索开关、Memory、长上下文和多 Agent 设置。 |
 | [`AGENTS.global.md`](AGENTS.global.md) | 全局 Agent 规则的仓库源文件；安装时复制为 `~/.codex/AGENTS.md`。文件名带有 `.global`，使它不会在本仓库中作为项目级指令与 `AGENTS.md` 同时加载。 |
 | [`models/`](models/) | 自定义模型目录。每个 JSON 文件都是一个 `{ "models": [...] }` 模型目录片段。 |
-| [`install.sh`](install.sh) | 将配置、全局规则和模型目录安装到当前用户环境，并清理本仓库不再分发的旧 skill。 |
+| [`install.sh`](install.sh) | 将配置、全局规则、个人技能和模型目录安装到当前用户环境，并清理本仓库不再分发的旧 skill。 |
+| [`skills/`](skills/) | 随仓库版本化的个人技能；安装脚本会安装其中的全部 skill。 |
 | [`.gitignore`](.gitignore) | 忽略本地认证文件 `auth.json`。 |
 
 仓库不保存 API 密钥、登录状态或其他运行时凭据。认证应在目标环境中单独完成。
@@ -31,6 +32,8 @@ cd codex-config
 ~/.codex/config.toml   <- config.toml
 ~/.codex/AGENTS.md     <- AGENTS.global.md
 ~/.codex/models.json   <- 官方模型目录与 models/*.json 合并后的目录
+~/.agents/skills/write-lessons/
+                         <- skills/write-lessons/
 ```
 
 ### 前置条件
@@ -44,8 +47,8 @@ cd codex-config
 
 `install.sh` 会先校验依赖，然后：
 
-1. 创建 `~/.codex` 和 `~/.config/git`。
-2. 安装 `config.toml` 和全局规则，并删除本仓库先前安装的 `analyze`、`write-code`、`use-git` skill 目录；其他 skill 不受影响。
+1. 创建 `~/.codex`、`~/.config/git` 和技能安装目录。
+2. 安装 `config.toml`、全局规则和 `skills/` 下的全部 skill，并删除本仓库先前安装的 `analyze`、`write-code`、`use-git` skill 目录；其他 skill 不受影响。
 3. 读取 Codex 自带模型目录，校验仓库中的模型片段，并按 `slug` 合并；仓库模型与官方模型同名时，以仓库版本覆盖。
 4. 将合并结果写入 `~/.codex/models.json`，使用临时文件替换目标文件，避免中断时留下不完整目录。
 5. 将 `.codex` 写入 `~/.config/git/ignore`。
@@ -58,6 +61,7 @@ cd codex-config
 test -f "$HOME/.codex/config.toml"
 test -f "$HOME/.codex/AGENTS.md"
 cmp AGENTS.global.md "$HOME/.codex/AGENTS.md"
+test -f "$HOME/.agents/skills/write-lessons/SKILL.md"
 test ! -e "$HOME/.agents/skills/analyze" && test ! -L "$HOME/.agents/skills/analyze"
 test ! -e "$HOME/.agents/skills/write-code" && test ! -L "$HOME/.agents/skills/write-code"
 test ! -e "$HOME/.agents/skills/use-git" && test ! -L "$HOME/.agents/skills/use-git"
@@ -71,7 +75,7 @@ jq -r '.models[].slug' "$HOME/.codex/models.json"
 
 ## 日常迭代与迁移
 
-修改配置、规则或 `models/*.json` 后提交 Git；在其他环境执行 `git pull` 后重新运行 `./install.sh` 即可同步。重新安装会覆盖上述 `~/.codex` 文件、清理本仓库不再分发的三个旧 skill，并重新获取官方模型目录。
+修改配置、规则、`skills/` 或 `models/*.json` 后提交 Git；在其他环境执行 `git pull` 后重新运行 `./install.sh` 即可同步。重新安装会覆盖上述 `~/.codex` 文件和 `skills/` 中同名的用户级 skill，并重新获取官方模型目录。
 
 ### 任务恢复
 
@@ -91,7 +95,7 @@ jq -r '.models[].slug' "$HOME/.codex/models.json"
 
 实际模型条目通常还需要完整的上下文窗口、推理等级、工具能力和服务端兼容性字段；可参考 [`models/deepseek.json`](models/deepseek.json)。每个 `slug` 应唯一，重复 `slug` 会按“仓库条目覆盖官方条目”的规则处理。
 
-迁移到新环境的最小流程是：安装 Codex CLI、完成认证、克隆本仓库、运行安装脚本。模型服务地址和 API 兼容性由 [`config.toml`](config.toml) 中的 `model_providers.custom` 决定；目标环境必须能够访问该服务。
+迁移到新环境的最小流程是：安装 Codex CLI、完成认证、克隆本仓库、运行安装脚本。模型服务地址和 API 兼容性由 [`config.toml`](config.toml) 中的 `model_providers.custom` 决定；目标环境必须能够访问该服务。技能安装到 `~/.agents/skills/`，由 Codex 从该目录发现。
 
 ## 配置要点与安全边界
 
