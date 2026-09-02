@@ -213,7 +213,7 @@ todo 必须使一个不了解先前对话的新 Agent 结合 Memory 和当前工
 ### 7.2 经验反馈
 
 **长期经验（lessons.md）**：
-- `.codex/lessons.md` 仅在用户明确调用 `$write-lessons` 时写入或整理；不因观察到事故、失败、纠正或缺陷自行判断是否记录
+- `.codex/lessons.md` 的写入或整理由用户明确调用 `$write-lessons` 时执行
 
 **失败路径记录**：
 - 实际尝试证明某条路径不可行时，立即在 `.codex/todo.md` 记录该路径、失败证据或原因、适用范围和允许重试的条件

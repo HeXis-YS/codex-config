@@ -1,15 +1,13 @@
 ---
 name: write-lessons
-description: 在用户明确调用时，将用户指定的事故按 A-E 等级写成 .codex/lessons.md 事故记录。使用于用户要求记录教训、补充或复核 lessons 记录；不用于 Agent 自行判断是否记录、读取 lessons 或记录 todo 失败路径。
+description: 在用户显式调用时，将用户指定的事故按 A-E 等级写成 .codex/lessons.md 事故记录；用户决定记录范围、等级和是否写入。
 ---
 
 # 写入 lessons.md
 
 ## 调用边界
 
-- 仅当用户明确调用 `$write-lessons` 时执行；不要因观察到事故、失败、纠正、缺陷或用户反馈主动调用、决定记录或判断等级。
-- 用户是记录范围、事故等级和是否需要写入的决策者。
-- 不用于：启动时阅读 lessons、把失败路径写入 todo、把一次性指令或用户观点直接转为经验。
+- 仅在用户显式调用 `$write-lessons` 时执行；用户决定记录范围、等级和是否写入。
 
 ## 事故等级
 
