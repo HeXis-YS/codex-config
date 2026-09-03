@@ -1,0 +1,7 @@
+interface:
+  display_name: "编写技术报告"
+  short_description: "为代码、commit、bugfix 或性能变更编写可复现技术报告"
+  default_prompt: "使用 $write-report 编写该代码或 commit 的技术报告。"
+
+policy:
+  allow_implicit_invocation: true
