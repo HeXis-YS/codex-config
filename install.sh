@@ -33,6 +33,7 @@ install_jq() {
 
 # Check codex before attempting any package-manager operation.
 command_exists codex || die 'codex command was not found; install Codex CLI and retry.'
+command_exists git || die 'git command was not found; install Git and retry.'
 
 if ! command_exists jq; then
     install_jq
@@ -45,6 +46,8 @@ codex_dir="$HOME/.codex"
 git_ignore_dir="$HOME/.config/git"
 skills_source_dir="$script_dir/skills"
 skills_install_dir="$HOME/.agents/skills"
+eli5_repo_url="https://github.com/DreambigOu/ELI5.git"
+eli5_install_dir="$skills_install_dir/eli5"
 retired_skills=(analyze write-code use-git)
 
 # Keep the source outside Codex's discovery names so this repository does not load it twice.
@@ -71,9 +74,13 @@ for skill_source_dir in "${skill_source_dirs[@]}"; do
 done
 
 staged_models=""
+eli5_tmp_dir=""
 cleanup() {
     if [ -n "$staged_models" ] && [ -e "$staged_models" ]; then
         rm -f -- "$staged_models"
+    fi
+    if [ -n "$eli5_tmp_dir" ] && [ -d "$eli5_tmp_dir" ]; then
+        rm -rf -- "$eli5_tmp_dir"
     fi
 }
 trap cleanup EXIT
@@ -95,6 +102,23 @@ for retired_skill in "${retired_skills[@]}"; do
     fi
 done
 printf '%s\n' '.codex' > "$git_ignore_dir/ignore"
+
+eli5_tmp_dir="$(mktemp -d "${TMPDIR:-/tmp}/codex-config-eli5.XXXXXX")" \
+    || die 'failed to create a temporary directory for ELI5.'
+eli5_repo_dir="$eli5_tmp_dir/ELI5"
+git clone --depth 1 "$eli5_repo_url" "$eli5_repo_dir" \
+    || die 'failed to clone the ELI5 skill repository.'
+eli5_source_dir="$eli5_repo_dir/skills/eli5"
+[ -f "$eli5_source_dir/SKILL.md" ] \
+    || die 'the ELI5 repository does not contain skills/eli5/SKILL.md.'
+
+if [ -d "$eli5_install_dir" ]; then
+    cp -a "$eli5_source_dir/." "$eli5_install_dir/"
+elif [ -e "$eli5_install_dir" ] || [ -L "$eli5_install_dir" ]; then
+    die "ELI5 install path is not a directory: $eli5_install_dir"
+else
+    cp -a "$eli5_source_dir" "$eli5_install_dir"
+fi
 
 catalog_filter='
     type == "object"
@@ -120,3 +144,4 @@ staged_models=""
 
 model_count="$(jq '.models | length' "$codex_dir/models.json")"
 printf 'Installed Codex configuration and %s models to %s\n' "$model_count" "$codex_dir"
+printf 'Installed ELI5 skill to %s\n' "$eli5_install_dir"

@@ -12,6 +12,7 @@
 | [`models/`](models/) | 自定义模型目录。每个 JSON 文件都是一个 `{ "models": [...] }` 模型目录片段；当前仅安装 DeepSeek 文件，其他文件保留在仓库中。 |
 | [`install.sh`](install.sh) | 将配置、全局规则、个人技能和模型目录安装到当前用户环境，并清理本仓库不再分发的旧 skill。 |
 | [`skills/`](skills/) | 随仓库版本化的个人技能；安装脚本会安装其中的全部 skill。 |
+| ELI5 | 外部 Codex 技能；安装脚本会从 GitHub 克隆并安装到 `~/.agents/skills/eli5`。 |
 | [`.gitignore`](.gitignore) | 忽略本地认证文件 `auth.json`。 |
 
 仓库不保存 API 密钥、登录状态或其他运行时凭据。认证应在目标环境中单独完成。
@@ -36,12 +37,14 @@ cd codex-config
                          <- skills/write-todo/
 ~/.agents/skills/write-lessons/
                          <- skills/write-lessons/
+~/.agents/skills/eli5    <- ELI5 仓库 skills/eli5
 ```
 
 ### 前置条件
 
 - Bash、`cp`、`install`、`mktemp` 等常见类 Unix 工具。
 - `codex` 命令已安装并位于 `PATH` 中。
+- `git` 命令已安装并位于 `PATH` 中。
 - `jq`。若缺少 `jq`，脚本会在检测到 `apt-get` 时尝试使用 root 或 `sudo` 自动安装；其他系统请先手动安装。
 
 ### 安装脚本的行为
@@ -51,8 +54,9 @@ cd codex-config
 1. 创建 `~/.codex`、`~/.config/git` 和技能安装目录。
 2. 安装 `config.toml`、全局规则和 `skills/` 下的全部 skill，并删除本仓库先前安装的 `analyze`、`write-code`、`use-git` skill 目录；其他 skill 不受影响。
 3. 校验 `models/deepseek.json`，直接将其写入 `~/.codex/models.json`；不读取 Codex 自带或 Z.ai 模型目录，也不进行合并。
-4. 使用临时文件替换目标文件，避免中断时留下不完整目录。
-5. 将 `.codex` 写入 `~/.config/git/ignore`。
+4. 克隆 ELI5 仓库并将 `skills/eli5` 安装到 `~/.agents/skills/eli5`。
+5. 使用临时文件替换目标文件，避免中断时留下不完整目录。
+6. 将 `.codex` 写入 `~/.config/git/ignore`。
 
 > **注意：** 当前脚本会用单行 `.codex` 覆盖整个 `~/.config/git/ignore`，不会保留其中原有的全局忽略规则。运行前请检查并备份该文件；如果依赖其他全局忽略项，请在安装后恢复或合并它们。
 
@@ -65,6 +69,7 @@ cmp AGENTS.global.md "$HOME/.codex/AGENTS.md"
 test -f "$HOME/.agents/skills/write-todo/SKILL.md"
 test -f "$HOME/.agents/skills/write-lessons/SKILL.md"
 test -f "$HOME/.agents/skills/write-report/SKILL.md"
+test -f "$HOME/.agents/skills/eli5/SKILL.md"
 test ! -e "$HOME/.agents/skills/analyze" && test ! -L "$HOME/.agents/skills/analyze"
 test ! -e "$HOME/.agents/skills/write-code" && test ! -L "$HOME/.agents/skills/write-code"
 test ! -e "$HOME/.agents/skills/use-git" && test ! -L "$HOME/.agents/skills/use-git"
