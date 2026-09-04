@@ -12,7 +12,7 @@
 | [`models/`](models/) | 自定义模型目录。每个 JSON 文件都是一个 `{ "models": [...] }` 模型目录片段；当前仅安装 DeepSeek 文件，其他文件保留在仓库中。 |
 | [`install.sh`](install.sh) | 将配置、全局规则、个人技能和模型目录安装到当前用户环境，并清理本仓库不再分发的旧 skill。 |
 | [`skills/`](skills/) | 随仓库版本化的个人技能；安装脚本会安装其中的全部 skill。 |
-| ELI5 | 外部 Codex 技能；安装脚本会从 GitHub 克隆并安装到 `~/.agents/skills/eli5`。 |
+| ELI5 | 外部 Codex 技能；安装脚本会从 GitHub 克隆并安装到 `~/.codex/skills/eli5`。 |
 | [`.gitignore`](.gitignore) | 忽略本地认证文件 `auth.json`。 |
 
 仓库不保存 API 密钥、登录状态或其他运行时凭据。认证应在目标环境中单独完成。
@@ -33,11 +33,11 @@ cd codex-config
 ~/.codex/config.toml   <- config.toml
 ~/.codex/AGENTS.md     <- AGENTS.global.md
 ~/.codex/models.json   <- models/deepseek.json 安装后的目录
-~/.agents/skills/write-todo/
+~/.codex/skills/write-todo/
                          <- skills/write-todo/
-~/.agents/skills/write-lessons/
+~/.codex/skills/write-lessons/
                          <- skills/write-lessons/
-~/.agents/skills/eli5    <- ELI5 仓库 skills/eli5
+~/.codex/skills/eli5    <- ELI5 仓库 skills/eli5
 ```
 
 ### 前置条件
@@ -54,9 +54,11 @@ cd codex-config
 1. 创建 `~/.codex`、`~/.config/git` 和技能安装目录。
 2. 安装 `config.toml`、全局规则和 `skills/` 下的全部 skill，并删除本仓库先前安装的 `analyze`、`write-code`、`use-git` skill 目录；其他 skill 不受影响。
 3. 校验 `models/deepseek.json`，直接将其写入 `~/.codex/models.json`；不读取 Codex 自带或 Z.ai 模型目录，也不进行合并。
-4. 克隆 ELI5 仓库并将 `skills/eli5` 安装到 `~/.agents/skills/eli5`。
+4. 克隆 ELI5 仓库并将 `skills/eli5` 安装到 `~/.codex/skills/eli5`。
 5. 使用临时文件替换目标文件，避免中断时留下不完整目录。
 6. 将 `.codex` 写入 `~/.config/git/ignore`。
+
+> 如果检测到旧的 `~/.agents/skills/`，脚本会将本仓库管理的技能和 ELI5 迁移到 `~/.codex/skills/`；其他未管理的技能不会被删除。
 
 > **注意：** 当前脚本会用单行 `.codex` 覆盖整个 `~/.config/git/ignore`，不会保留其中原有的全局忽略规则。运行前请检查并备份该文件；如果依赖其他全局忽略项，请在安装后恢复或合并它们。
 
@@ -66,13 +68,13 @@ cd codex-config
 test -f "$HOME/.codex/config.toml"
 test -f "$HOME/.codex/AGENTS.md"
 cmp AGENTS.global.md "$HOME/.codex/AGENTS.md"
-test -f "$HOME/.agents/skills/write-todo/SKILL.md"
-test -f "$HOME/.agents/skills/write-lessons/SKILL.md"
-test -f "$HOME/.agents/skills/write-report/SKILL.md"
-test -f "$HOME/.agents/skills/eli5/SKILL.md"
-test ! -e "$HOME/.agents/skills/analyze" && test ! -L "$HOME/.agents/skills/analyze"
-test ! -e "$HOME/.agents/skills/write-code" && test ! -L "$HOME/.agents/skills/write-code"
-test ! -e "$HOME/.agents/skills/use-git" && test ! -L "$HOME/.agents/skills/use-git"
+test -f "$HOME/.codex/skills/write-todo/SKILL.md"
+test -f "$HOME/.codex/skills/write-lessons/SKILL.md"
+test -f "$HOME/.codex/skills/write-report/SKILL.md"
+test -f "$HOME/.codex/skills/eli5/SKILL.md"
+test ! -e "$HOME/.codex/skills/analyze" && test ! -L "$HOME/.codex/skills/analyze"
+test ! -e "$HOME/.codex/skills/write-code" && test ! -L "$HOME/.codex/skills/write-code"
+test ! -e "$HOME/.codex/skills/use-git" && test ! -L "$HOME/.codex/skills/use-git"
 jq -r '.models[].slug' "$HOME/.codex/models.json"
 ```
 
@@ -106,7 +108,7 @@ jq -r '.models[].slug' "$HOME/.codex/models.json"
 
 实际模型条目通常还需要完整的上下文窗口、推理等级、工具能力和服务端兼容性字段；可参考 [`models/deepseek.json`](models/deepseek.json)。每个 `slug` 应唯一；当前安装脚本只读取 DeepSeek 模型文件。
 
-迁移到新环境的最小流程是：安装 Codex CLI、完成认证、克隆本仓库、运行安装脚本。模型服务地址和 API 兼容性由 [`config.toml`](config.toml) 中的 `model_providers.deepseek` 决定；目标环境必须能够访问该服务。技能安装到 `~/.agents/skills/`，由 Codex 从该目录发现。
+迁移到新环境的最小流程是：安装 Codex CLI、完成认证、克隆本仓库、运行安装脚本。模型服务地址和 API 兼容性由 [`config.toml`](config.toml) 中的 `model_providers.deepseek` 决定；目标环境必须能够访问该服务。技能安装到 `~/.codex/skills/`，由 Codex 从该目录发现。
 
 ## 配置要点与安全边界
 

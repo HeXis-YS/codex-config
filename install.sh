@@ -45,7 +45,8 @@ script_dir="$(CDPATH= cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)"
 codex_dir="$HOME/.codex"
 git_ignore_dir="$HOME/.config/git"
 skills_source_dir="$script_dir/skills"
-skills_install_dir="$HOME/.agents/skills"
+legacy_skills_install_dir="$HOME/.agents/skills"
+skills_install_dir="$HOME/.codex/skills"
 eli5_repo_url="https://github.com/DreambigOu/ELI5.git"
 eli5_install_dir="$skills_install_dir/eli5"
 retired_skills=(analyze write-code use-git)
@@ -73,6 +74,11 @@ for skill_source_dir in "${skill_source_dirs[@]}"; do
         || die "required skill metadata is missing: $skill_source_dir/agents/openai.yaml"
 done
 
+managed_skill_names=(eli5)
+for skill_source_dir in "${skill_source_dirs[@]}"; do
+    managed_skill_names+=("${skill_source_dir##*/}")
+done
+
 staged_models=""
 eli5_tmp_dir=""
 cleanup() {
@@ -86,6 +92,28 @@ cleanup() {
 trap cleanup EXIT
 
 mkdir -p "$codex_dir" "$git_ignore_dir" "$skills_install_dir"
+# Migrate skills previously installed to the legacy Codex user-skill directory.
+if [ -d "$legacy_skills_install_dir" ]; then
+    for skill_name in "${managed_skill_names[@]}"; do
+        legacy_skill_dir="$legacy_skills_install_dir/$skill_name"
+        new_skill_dir="$skills_install_dir/$skill_name"
+        if [ -e "$legacy_skill_dir" ] || [ -L "$legacy_skill_dir" ]; then
+            if [ -e "$new_skill_dir" ] || [ -L "$new_skill_dir" ]; then
+                rm -rf -- "$legacy_skill_dir"
+            else
+                mv -- "$legacy_skill_dir" "$new_skill_dir"
+            fi
+        fi
+    done
+    for retired_skill in "${retired_skills[@]}"; do
+        legacy_retired_dir="$legacy_skills_install_dir/$retired_skill"
+        if [ -e "$legacy_retired_dir" ] || [ -L "$legacy_retired_dir" ]; then
+            rm -rf -- "$legacy_retired_dir"
+        fi
+    done
+    rmdir "$legacy_skills_install_dir" 2>/dev/null || true
+fi
+
 install -m 0644 "$script_dir/config.toml" "$codex_dir/config.toml"
 install -m 0644 "$script_dir/AGENTS.global.md" "$codex_dir/AGENTS.md"
 for skill_source_dir in "${skill_source_dirs[@]}"; do
