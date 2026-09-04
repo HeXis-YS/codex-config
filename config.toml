@@ -5,7 +5,9 @@ approval_policy = "never"
 sandbox_mode = "danger-full-access"
 mcp_oauth_credentials_store = "file"
 
-model_provider = "custom"
+model = "deepseek-v4-flash-vision-exp"
+model_reasoning_effort = "max"
+model_provider = "deepseek"
 model_context_window = 272000
 model_auto_compact_token_limit = 240000
 web_search = "live"
@@ -17,14 +19,15 @@ goals = true
 multi_agent = true
 multi_agent_v2 = true
 
-[model_providers.custom]
-name = "hexis.moe"
-base_url = "https://api.hexis.moe/v1"
-requires_openai_auth = true
+[model_providers.deepseek]
+name = "DeepSeek"
+base_url = "https://api.deepseek.com/"
+wire_api = "responses"
+env_key = "DEEPSEEK_API_KEY"
 supports_standalone_web_search = true
 
 [agents]
 enabled = true
 max_concurrent_threads_per_session = 8
-default_subagent_model = "gpt-5.6-luna"
+default_subagent_model = "deepseek-v4-flash-vision-exp"
 default_subagent_reasoning_effort = "max"

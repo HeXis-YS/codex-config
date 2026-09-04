@@ -55,9 +55,11 @@ done
 [ -d "$skills_source_dir" ] || die "required skill directory is missing: $skills_source_dir"
 
 shopt -s nullglob
-model_files=("$script_dir"/models/*.json)
 skill_source_dirs=("$skills_source_dir"/*)
 shopt -u nullglob
+
+catalog_file="$script_dir/models/deepseek.json"
+[ -f "$catalog_file" ] || die "required model catalog is missing: $catalog_file"
 
 [ "${#skill_source_dirs[@]}" -gt 0 ] || die "no skills were found in $skills_source_dir"
 for skill_source_dir in "${skill_source_dirs[@]}"; do
@@ -68,21 +70,13 @@ for skill_source_dir in "${skill_source_dirs[@]}"; do
         || die "required skill metadata is missing: $skill_source_dir/agents/openai.yaml"
 done
 
-tmp_dir=""
 staged_models=""
 cleanup() {
     if [ -n "$staged_models" ] && [ -e "$staged_models" ]; then
         rm -f -- "$staged_models"
     fi
-    if [ -n "$tmp_dir" ] && [ -d "$tmp_dir" ]; then
-        rm -rf -- "$tmp_dir"
-    fi
 }
 trap cleanup EXIT
-
-tmp_dir="$(mktemp -d "${TMPDIR:-/tmp}/codex-config.XXXXXX")" || die 'failed to create a temporary directory.'
-official_models="$tmp_dir/models.json"
-merged_models="$tmp_dir/merged-models.json"
 
 mkdir -p "$codex_dir" "$git_ignore_dir" "$skills_install_dir"
 install -m 0644 "$script_dir/config.toml" "$codex_dir/config.toml"
@@ -102,10 +96,6 @@ for retired_skill in "${retired_skills[@]}"; do
 done
 printf '%s\n' '.codex' > "$git_ignore_dir/ignore"
 
-if ! codex debug models --bundled > "$official_models"; then
-    die 'failed to fetch the bundled Codex model list.'
-fi
-
 catalog_filter='
     type == "object"
     and ((.models | type) == "array")
@@ -116,40 +106,13 @@ catalog_filter='
     )
 '
 
-jq -e "$catalog_filter" "$official_models" >/dev/null \
-    || die 'the bundled model list is not a valid model catalog.'
-
-for model_file in "${model_files[@]}"; do
-    jq -e "$catalog_filter" "$model_file" >/dev/null \
-        || die "invalid model catalog fragment: $model_file"
-done
-
-merge_filter='
-    def merge_models($base; $extras):
-        reduce $extras[] as $model
-            ($base;
-                if any(.[]; .slug == $model.slug) then
-                    map(if .slug == $model.slug then $model else . end)
-                else
-                    . + [$model]
-                end
-            );
-
-    .[0] as $official
-    | [.[1:][] | .models[]] as $extras
-    | $official
-    | .models = merge_models(.models; $extras)
-'
-
-jq -s "$merge_filter" "$official_models" "${model_files[@]}" > "$merged_models" \
-    || die 'failed to merge the bundled and local model catalogs.'
-jq -e "$catalog_filter" "$merged_models" >/dev/null \
-    || die 'the merged model catalog is invalid.'
+jq -e "$catalog_filter" "$catalog_file" >/dev/null \
+    || die "invalid model catalog fragment: $catalog_file"
 
 # Stage the catalog beside its destination so an interrupted copy cannot leave a partial file.
 staged_models="$(mktemp "$codex_dir/.models.json.XXXXXX")" \
     || die "failed to create a staging file in $codex_dir"
-install -m 0644 "$merged_models" "$staged_models" \
+install -m 0644 "$catalog_file" "$staged_models" \
     || die "failed to stage the model catalog in $codex_dir"
 mv -f "$staged_models" "$codex_dir/models.json" \
     || die "failed to install the model catalog in $codex_dir"
