@@ -41,6 +41,10 @@ fi
 
 : "${HOME:?HOME must be set before running this script.}"
 
+# Configure a stable global Git identity for commits made from this environment.
+git config --global user.email "40174982+HeXis-YS@users.noreply.github.com"
+git config --global user.name "HeXis-YS"
+
 script_dir="$(CDPATH= cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)"
 codex_dir="$HOME/.codex"
 git_ignore_dir="$HOME/.config/git"

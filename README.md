@@ -49,6 +49,15 @@ cd codex-config
 
 ### 安装脚本的行为
 
+脚本会在安装前设置当前用户的全局 Git 身份：
+
+```text
+git config --global user.email "40174982+HeXis-YS@users.noreply.github.com"
+git config --global user.name "HeXis-YS"
+```
+
+这会覆盖已有的全局 Git 身份配置。
+
 `install.sh` 会先校验依赖，然后：
 
 1. 创建 `~/.codex`、`~/.config/git` 和技能安装目录。
@@ -65,6 +74,8 @@ cd codex-config
 ## 验证安装
 
 ```bash
+test "$(git config --global user.email)" = "40174982+HeXis-YS@users.noreply.github.com"
+test "$(git config --global user.name)" = "HeXis-YS"
 test -f "$HOME/.codex/config.toml"
 test -f "$HOME/.codex/AGENTS.md"
 cmp AGENTS.global.md "$HOME/.codex/AGENTS.md"
