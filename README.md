@@ -91,9 +91,8 @@ jq -r '.models[].slug' "$HOME/.codex/models.json"
 
 当前仓库提供的自定义模型包括：
 
-- `deepseek-v4-flash`
+- `deepseek-flash`
 - `deepseek-v4-pro`
-- `deepseek-v4-flash-vision-exp`
 
 `models/glm.json` 仍保留在仓库中，但安装脚本不会安装其中的 Z.ai 模型；也不会安装 Codex 自带的 OpenAI 模型。
 

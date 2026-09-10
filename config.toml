@@ -5,7 +5,7 @@ approval_policy = "never"
 sandbox_mode = "danger-full-access"
 mcp_oauth_credentials_store = "file"
 
-model = "deepseek-v4-flash-vision-exp"
+model = "deepseek-flash"
 model_reasoning_effort = "max"
 model_provider = "custom"
 model_context_window = 272000
@@ -28,5 +28,5 @@ supports_standalone_web_search = true
 [agents]
 enabled = true
 max_concurrent_threads_per_session = 8
-default_subagent_model = "deepseek-v4-flash-vision-exp"
+default_subagent_model = "deepseek-flash"
 default_subagent_reasoning_effort = "max"
