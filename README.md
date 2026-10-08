@@ -28,6 +28,8 @@ cd codex-config
 ./install.sh
 ```
 
+安装时可以传入 `--profile <name>`（例如 `./install.sh --profile higress`），让仓库根目录下 `<name>.config.toml` 成为安装后的默认 provider；不传 `--profile` 时安装仓库默认配置（provider 为 `custom`）。运行期仍可用 `codex --profile <name>` 临时切换。
+
 脚本使用当前用户的 `HOME`，安装结果位于：
 
 ```text
@@ -71,6 +73,7 @@ git config --global user.name "HeXis-YS"
 4. 克隆 ELI5 仓库并将 `skills/eli5` 安装到 `~/.codex/skills/eli5`。
 5. 使用临时文件替换目标文件，避免中断时留下不完整目录。
 6. 将 `.codex` 写入 `~/.config/git/ignore`。
+7. 传入 `--profile <name>` 时，用仓库根目录下 `<name>.config.toml` 的 `model`、`model_provider`、`model_catalog_json` 覆盖已安装 `config.toml` 中的同名键，使该 profile 成为默认 provider；`<name>` 不存在时脚本直接报错。
 
 > 如果检测到旧的 `~/.agents/skills/`，脚本会将本仓库管理的技能和 ELI5 迁移到 `~/.codex/skills/`；其他未管理的技能不会被删除。
 
