@@ -102,7 +102,7 @@ jq -r '.models[].slug' "$HOME/.codex/models.json" "$HOME/.codex/models.gateway.j
 | `models/deepseek.json` | `custom`（hexis.moe，`https://api.deepseek.com/`） | `deepseek-flash`、`deepseek-v4-pro` |
 | `models/gateway.json` | `gateway`（CC Switch，`http://host.docker.internal:8080/v1/`） | `ccs-higress/ZHIPU/GLM-5.3-Flash`、`ccs-higress/glm-5.3`、`deepseek-flash`、`deepseek-v4-pro` |
 
-四个 slug 均由该端点的 `/v1/models` 给出，并在 `/v1/chat/completions` 与 `/v1/responses` 上实测返回 200。GLM 系列必须带 `ccs-higress/` 前缀经 CC Switch 转发：直连 Higress 时 `/v1/responses` 不接受 `ZHIPU/GLM-5.3-Flash`（400 Unsupported model）。该 provider 通过 profile 使用：
+四个 slug 均由该端点的 `/v1/models` 给出，并在 `/v1/chat/completions` 与 `/v1/responses` 上实测返回 200。GLM 系列必须带 `ccs-higress/` 前缀经 CC Switch 转发：直连 Higress 时 `/v1/responses` 不接受 `ZHIPU/GLM-5.3-Flash`（400 Unsupported model）。该端点不校验鉴权，无 `Authorization` 头也返回 200，因此 `model_providers.gateway` 不声明 `env_key`（声明后 Codex 会因缺少环境变量而拒绝启动）。该 provider 通过 profile 使用：
 
 ```bash
 codex --profile gateway
@@ -132,7 +132,7 @@ codex --profile gateway
 
 实际模型条目通常还需要完整的上下文窗口、推理等级、工具能力和服务端兼容性字段；可参考 [`models/deepseek.json`](models/deepseek.json)。每个 `slug` 应唯一；安装脚本读取 `catalog_sources` 中列出的模型文件。
 
-迁移到新环境的最小流程是：安装 Codex CLI、完成认证、克隆本仓库、运行安装脚本。模型服务地址和 API 兼容性由 [`config.toml`](config.toml) 中的 `model_providers.custom` 和 `model_providers.gateway` 决定；目标环境必须能够访问这两个服务，并设置对应的 `API_KEY`。技能安装到 `~/.codex/skills/`，由 Codex 从该目录发现。
+迁移到新环境的最小流程是：安装 Codex CLI、完成认证、克隆本仓库、运行安装脚本。模型服务地址和 API 兼容性由 [`config.toml`](config.toml) 中的 `model_providers.custom` 和 `model_providers.gateway` 决定；目标环境必须能够访问这两个服务，其中 `custom` 需要设置 `API_KEY`，`gateway` 不鉴权、无需任何密钥。技能安装到 `~/.codex/skills/`，由 Codex 从该目录发现。
 
 ## 配置要点与安全边界
 
