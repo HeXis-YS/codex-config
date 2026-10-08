@@ -10,7 +10,7 @@
 | [`config.toml`](config.toml) | Codex 全局配置：自定义模型服务、网页搜索开关、Memory、长上下文和多 Agent 设置。 |
 | [`higress.config.toml`](higress.config.toml) | Higress provider 的 profile 源文件；安装为 `~/.codex/higress.config.toml`，用 `codex --profile higress` 叠加到主配置。 |
 | [`AGENTS.global.md`](AGENTS.global.md) | 全局 Agent 规则的仓库源文件；安装时复制为 `~/.codex/AGENTS.md`。文件名带有 `.global`，使它不会在本仓库中作为项目级指令与 `AGENTS.md` 同时加载。 |
-| [`models/`](models/) | 自定义模型目录。每个 JSON 文件都是一个 `{ "models": [...] }` 模型目录片段；`deepseek.json` 和 `higress.json` 分别安装为 `~/.codex/models.json` 和 `~/.codex/models.higress.json`，`glm.json` 保留在仓库中不安装。 |
+| [`models/`](models/) | 自定义模型目录。每个 JSON 文件都是一个 `{ "models": [...] }` 模型目录片段；`deepseek.json` 和 `higress.json` 分别安装为 `~/.codex/models.json` 和 `~/.codex/models.higress.json`，`glm.json` 不单独安装，只作为 `higress.json` 中 GLM 条目的来源。 |
 | [`install.sh`](install.sh) | 将配置、全局规则、个人技能和模型目录安装到当前用户环境，并清理本仓库不再分发的旧 skill。 |
 | [`skills/`](skills/) | 随仓库版本化的个人技能；安装脚本会安装其中的全部 skill。 |
 | ELI5 | 外部 Codex 技能；安装脚本会从 GitHub 克隆并安装到 `~/.codex/skills/eli5`。 |
@@ -102,7 +102,7 @@ jq -r '.models[].slug' "$HOME/.codex/models.json" "$HOME/.codex/models.higress.j
 | `models/deepseek.json` | `deepseek`（DeepSeek，`https://api.deepseek.com/`） | `deepseek-flash`、`deepseek-v4-pro` |
 | `models/higress.json` | `higress`（Higress，`http://host.docker.internal:8080/v1/`） | `deepseek-v4.1-flash`、`deepseek-v4-pro`、`ccs-higress/ZHIPU/GLM-5.3-Flash`、`ccs-higress/glm-5.3` |
 
-该端点的 `/v1/models` 返回 4 个 slug，且在 `/v1/responses` 上 `deepseek-v4.1-flash`、`deepseek-v4-pro`、`ccs-higress/ZHIPU/GLM-5.3-Flash`、`ccs-higress/glm-5.3` 均返回 200。上游把其中一个 slug 拼成 `deepseel-v4-pro`（请求它会 401），本仓库按上游 `display_name` 修正为 `deepseek-v4-pro`。GLM 系列必须带 `ccs-higress/` 前缀经该代理转发：直连 Higress 时 `/v1/responses` 不接受 `ZHIPU/GLM-5.3-Flash`（400 Unsupported model）。该端点不校验鉴权，无 `Authorization` 头也返回 200，因此 `model_providers.higress` 不声明 `env_key`（声明后 Codex 会因缺少环境变量而拒绝启动）。该 provider 通过 profile 使用：
+该端点的 `/v1/models` 返回 4 个 slug，但其中大量字段由网关自行填充，不能直接作为模型目录。`models/higress.json` 因此由仓库中的 `models/deepseek.json` 与 `models/glm.json` 组合而成：只把 slug 改成网关实际接受的名字（`deepseek-flash`→`deepseek-v4.1-flash`、`glm-5.3-flash`→`ccs-higress/ZHIPU/GLM-5.3-Flash`、`glm-5.3`→`ccs-higress/glm-5.3`），并把 `priority` 重排为 1–4，其余字段与源文件逐字段一致。四个 slug 在 `/v1/responses` 上均返回 200；`deepseek-flash` 与 `glm-5.3-flash` 直连该端点会 404，GLM 必须带 `ccs-higress/` 前缀（`ZHIPU/GLM-5.3-Flash` 会 400）。该端点不校验鉴权，无 `Authorization` 头也返回 200，因此 `model_providers.higress` 不声明 `env_key`（声明后 Codex 会因缺少环境变量而拒绝启动）。该 provider 通过 profile 使用：
 
 ```bash
 codex --profile higress
