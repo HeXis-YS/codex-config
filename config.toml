@@ -7,7 +7,7 @@ mcp_oauth_credentials_store = "file"
 
 model = "deepseek-flash"
 model_reasoning_effort = "high"
-model_provider = "deepseek"
+model_provider = "custom"
 model_context_window = 272000
 model_auto_compact_token_limit = 240000
 web_search = "live"
@@ -19,8 +19,8 @@ goals = true
 multi_agent = true
 multi_agent_v2 = true
 
-[model_providers.deepseek]
-name = "DeepSeek"
+[model_providers.custom]
+name = "hexis.moe"
 base_url = "https://api.deepseek.com/"
 experimental_bearer_token = "sbx-cs-deepseek"
 supports_standalone_web_search = true

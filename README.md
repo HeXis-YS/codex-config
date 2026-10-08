@@ -16,7 +16,7 @@
 | ELI5 | 外部 Codex 技能；安装脚本会从 GitHub 克隆并安装到 `~/.codex/skills/eli5`。 |
 | [`.gitignore`](.gitignore) | 忽略本地认证文件 `auth.json`。 |
 
-仓库会在 `config.toml` 中直接把 DeepSeek provider 的 bearer token 写进 `experimental_bearer_token`，不再依赖环境变量；因此本仓库自身包含一个凭据，应作为私密仓库对待，不要公开分发或推送到公共远端。其余登录状态（`auth.json`）仍只保存在本机。
+仓库会在 `config.toml` 中直接把 `custom` provider 的 bearer token 写进 `experimental_bearer_token`，不再依赖环境变量；因此本仓库自身包含一个凭据，应作为私密仓库对待，不要公开分发或推送到公共远端。其余登录状态（`auth.json`）仍只保存在本机。
 
 ## 快速安装
 
@@ -66,7 +66,7 @@ git config --global user.name "HeXis-YS"
 `install.sh` 会先校验依赖，然后：
 
 1. 创建 `~/.codex`、`~/.config/git` 和技能安装目录。
-2. 安装 `config.toml`、`higress.config.toml`、全局规则和 `skills/` 下的全部 skill，并删除本仓库先前安装的 `analyze`、`write-code`、`use-git` skill 目录；其他 skill 不受影响。
+2. 安装 `config.toml`、仓库根目录下所有 `*.config.toml` profile、全局规则和 `skills/` 下的全部 skill，并删除本仓库先前安装的 `analyze`、`write-code`、`use-git` skill 目录；其他 skill 不受影响。
 3. 校验 `models/deepseek.json` 和 `models/higress.json`，分别写入 `~/.codex/models.json` 和 `~/.codex/models.higress.json`；不读取 Codex 自带或 Z.ai 模型目录，也不进行合并。
 4. 克隆 ELI5 仓库并将 `skills/eli5` 安装到 `~/.codex/skills/eli5`。
 5. 使用临时文件替换目标文件，避免中断时留下不完整目录。
@@ -99,7 +99,7 @@ jq -r '.models[].slug' "$HOME/.codex/models.json" "$HOME/.codex/models.higress.j
 
 | 模型目录 | provider | 模型 |
 | --- | --- | --- |
-| `models/deepseek.json` | `deepseek`（DeepSeek，`https://api.deepseek.com/`） | `deepseek-flash`、`deepseek-v4-pro` |
+| `models/deepseek.json` | `custom`（hexis.moe，`https://api.deepseek.com/`） | `deepseek-flash`、`deepseek-v4-pro` |
 | `models/higress.json` | `higress`（Higress，`http://host.docker.internal:8080/v1/`） | `deepseek-v4.1-flash`、`deepseek-v4-pro`、`ccs-higress/ZHIPU/GLM-5.3-Flash`、`ccs-higress/glm-5.3` |
 
 该端点的 `/v1/models` 返回 4 个 slug，但其中大量字段由网关自行填充，不能直接作为模型目录。`models/higress.json` 因此由仓库中的 `models/deepseek.json` 与 `models/glm.json` 组合而成：只把 slug 改成网关实际接受的名字（`deepseek-flash`→`deepseek-v4.1-flash`、`glm-5.3-flash`→`ccs-higress/ZHIPU/GLM-5.3-Flash`、`glm-5.3`→`ccs-higress/glm-5.3`），并把 `priority` 重排为 1–4，其余字段与源文件逐字段一致。四个 slug 在 `/v1/responses` 上均返回 200；`deepseek-flash` 与 `glm-5.3-flash` 直连该端点会 404，GLM 必须带 `ccs-higress/` 前缀（`ZHIPU/GLM-5.3-Flash` 会 400）。该端点不校验鉴权，无 `Authorization` 头也返回 200，因此 `model_providers.higress` 不声明 `env_key`（声明后 Codex 会因缺少环境变量而拒绝启动）。该 provider 通过 profile 使用：
@@ -132,7 +132,7 @@ codex --profile higress
 
 实际模型条目通常还需要完整的上下文窗口、推理等级、工具能力和服务端兼容性字段；可参考 [`models/deepseek.json`](models/deepseek.json)。每个 `slug` 应唯一；安装脚本读取 `catalog_sources` 中列出的模型文件。
 
-迁移到新环境的最小流程是：安装 Codex CLI、完成认证、克隆本仓库、运行安装脚本。模型服务地址和 API 兼容性由 [`config.toml`](config.toml) 中的 `model_providers.deepseek` 和 `model_providers.higress` 决定；目标环境必须能够访问这两个服务，其中 `deepseek` 的 bearer token 已写死在 `config.toml`，`higress` 不鉴权、无需任何密钥。技能安装到 `~/.codex/skills/`，由 Codex 从该目录发现。
+迁移到新环境的最小流程是：安装 Codex CLI、完成认证、克隆本仓库、运行安装脚本。模型服务地址和 API 兼容性由 [`config.toml`](config.toml) 中的 `model_providers.custom` 和 `model_providers.higress` 决定；目标环境必须能够访问这两个服务，其中 `custom` 的 bearer token 已写死在 `config.toml`，`higress` 不鉴权、无需任何密钥。技能安装到 `~/.codex/skills/`，由 Codex 从该目录发现。
 
 ## 配置要点与安全边界
 
@@ -145,7 +145,7 @@ codex --profile higress
 
 这适合个人信任的开发容器或隔离环境，不适合直接用于不受信任的代码、生产主机或含敏感数据的工作区。若环境风险不同，应先调整 `config.toml`，再运行安装脚本。
 
-`auth.json` 仅保留在本机，不要强制添加。`config.toml` 现在把 DeepSeek provider 的 bearer token 写死在 `experimental_bearer_token` 并随仓库提交，因此本仓库含有一个凭据，应按私密仓库处理，不要公开分发或推送到公共远端；token 轮换或泄露时更新该字段。除此之外不要把其他 API 密钥写入模型 JSON 或 Git 历史。
+`auth.json` 仅保留在本机，不要强制添加。`config.toml` 现在把 `custom` provider 的 bearer token 写死在 `experimental_bearer_token` 并随仓库提交，因此本仓库含有一个凭据，应按私密仓库处理，不要公开分发或推送到公共远端；token 轮换或泄露时更新该字段。除此之外不要把其他 API 密钥写入模型 JSON 或 Git 历史。
 
 ## 故障排查
 
