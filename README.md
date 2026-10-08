@@ -7,7 +7,7 @@
 | 路径 | 作用 |
 | --- | --- |
 | [`AGENTS.md`](AGENTS.md) | 本仓库的项目级开发规则，用于约束可分发配置、规则和技能的编写与审查；不会被安装。 |
-| [`config.toml`](config.toml) | 唯一的 Codex 全局配置：自定义模型服务、网页搜索开关、Memory、长上下文和多 Agent 设置。默认 provider 为 `custom`（deepseek 端点），安装时可用 `--profile` 让 `install.sh` 改写这一段。 |
+| [`config.toml`](config.toml) | 唯一的 Codex 全局配置：网页搜索开关、Memory、长上下文和多 Agent 设置。provider 一节留了 `# __CUSTOM_PROVIDER__` 占位符，由 `install.sh` 按所选 profile 填入整段 `[model_providers.custom]`。 |
 | [`AGENTS.global.md`](AGENTS.global.md) | 全局 Agent 规则的仓库源文件；安装时复制为 `~/.codex/AGENTS.md`。文件名带有 `.global`，使它不会在本仓库中作为项目级指令与 `AGENTS.md` 同时加载。 |
 | [`models/`](models/) | 自定义模型目录。每个 JSON 文件都是一个 `{ "models": [...] }` 模型目录片段；安装时按所选 profile 把对应的一份安装为 `~/.codex/models.json`（默认 `deepseek.json`）。`glm.json` 不单独安装，只作为 `higress.json` 中 GLM 条目的来源。 |
 | [`install.sh`](install.sh) | 将配置、全局规则、个人技能和模型目录安装到当前用户环境，并清理本仓库不再分发的旧 skill。 |
@@ -15,7 +15,7 @@
 | ELI5 | 外部 Codex 技能；安装脚本会从 GitHub 克隆并安装到 `~/.codex/skills/eli5`。 |
 | [`.gitignore`](.gitignore) | 忽略本地认证文件 `auth.json`。 |
 
-仓库会在 `config.toml` 中直接把 `custom` provider 的 bearer token 写进 `experimental_bearer_token`，不再依赖环境变量；因此本仓库自身包含一个凭据，应作为私密仓库对待，不要公开分发或推送到公共远端。其余登录状态（`auth.json`）仍只保存在本机。
+仓库会把 `custom` provider 的 bearer token 写进 `install.sh` 里 deepseek 那一段的 `experimental_bearer_token`，不再依赖环境变量；因此本仓库自身包含一个凭据，应作为私密仓库对待，不要公开分发或推送到公共远端。其余登录状态（`auth.json`）仍只保存在本机。
 
 ## 快速安装
 
@@ -27,12 +27,12 @@ cd codex-config
 ./install.sh
 ```
 
-仓库只维护一份配置。安装时可以传入 `--profile <name>` 选择后端：`deepseek`（默认，配置保持原样）或 `higress`。选择 `higress` 时 `install.sh` 改写安装后 `config.toml` 的 `[model_providers.custom]`（指向 `http://host.docker.internal:8080/v1/`，不要 bearer token），并把 `~/.codex/models.json` 换成对应的模型列表。两种情况下 provider id 都是 `custom`，既有的会话记录不会失效。
+仓库只维护一份配置。安装时 `install.sh` 把 `config.toml` 里 `# __CUSTOM_PROVIDER__` 占位符替换为所选后端的整段 `[model_providers.custom]`，并安装对应 profile 的模型列表。`--profile <name>` 可选 `deepseek`（默认，指向 `https://api.deepseek.com/`）或 `higress`（指向 `http://host.docker.internal:8080/v1/`，无 bearer token）。两种情况下 provider id 都是 `custom`，既有的会话记录不会失效。
 
 脚本使用当前用户的 `HOME`，安装结果位于：
 
 ```text
-~/.codex/config.toml   <- config.toml（--profile higress 时改写了 [model_providers.custom]）
+~/.codex/config.toml   <- config.toml（占位符替换为所选后端的 [model_providers.custom]）
 ~/.codex/AGENTS.md     <- AGENTS.global.md
 ~/.codex/models.json   <- models/<profile>.json 安装后的目录
 ~/.codex/skills/write-todo/
@@ -68,7 +68,7 @@ git config --global user.name "HeXis-YS"
 4. 克隆 ELI5 仓库并将 `skills/eli5` 安装到 `~/.codex/skills/eli5`。
 5. 使用临时文件替换目标文件，避免中断时留下不完整目录。
 6. 将 `.codex` 写入 `~/.config/git/ignore`。
-7. 传入 `--profile <name>` 时改写安装后 `config.toml` 的 `[model_providers.custom]`，并在安装前校验 `<name>` 属于 `deepseek`、`higress`，其他取值直接报错。脚本同时删除早期版本安装的 `~/.codex/higress.config.toml`、`~/.codex/gateway.config.toml`、`~/.codex/models.gateway.json` 和 `~/.codex/models.higress.json`。
+7. 用所选后端的整段 `[model_providers.custom]` 替换安装后 `config.toml` 中的 `# __CUSTOM_PROVIDER__` 占位符，并在安装前校验 `<name>` 属于 `deepseek`、`higress`，其他取值或源文件缺少占位符时直接报错。脚本同时删除早期版本安装的 `~/.codex/higress.config.toml`、`~/.codex/gateway.config.toml`、`~/.codex/models.gateway.json` 和 `~/.codex/models.higress.json`。
 
 > 如果检测到旧的 `~/.agents/skills/`，脚本会将本仓库管理的技能和 ELI5 迁移到 `~/.codex/skills/`；其他未管理的技能不会被删除。
 
@@ -135,7 +135,7 @@ jq -r '.models[].slug' "$HOME/.codex/models.json"
 
 实际模型条目通常还需要完整的上下文窗口、推理等级、工具能力和服务端兼容性字段；可参考 [`models/deepseek.json`](models/deepseek.json)。每个 `slug` 应唯一；安装脚本读取 `catalog_sources` 中列出的模型文件。
 
-迁移到新环境的最小流程是：安装 Codex CLI、完成认证、克隆本仓库、运行安装脚本。模型服务地址由 [`config.toml`](config.toml) 的 `[model_providers.custom]` 与 `--profile` 共同决定：默认指向 `https://api.deepseek.com/`，bearer token 已写死在该文件；`--profile higress` 则把这一段改写为 `http://host.docker.internal:8080/v1/`，该端点不鉴权、无需任何密钥。目标环境必须能够访问所选端点的服务。技能安装到 `~/.codex/skills/`，由 Codex 从该目录发现。
+迁移到新环境的最小流程是：安装 Codex CLI、完成认证、克隆本仓库、运行安装脚本。模型服务地址由 `--profile` 决定，端点数据在 [`install.sh`](install.sh)：默认指向 `https://api.deepseek.com/`，bearer token 写死在 deepseek 段落里；`--profile higress` 指向 `http://host.docker.internal:8080/v1/`，该端点不鉴权、无需任何密钥。目标环境必须能够访问所选端点的服务。技能安装到 `~/.codex/skills/`，由 Codex 从该目录发现。
 
 ## 配置要点与安全边界
 
@@ -148,7 +148,7 @@ jq -r '.models[].slug' "$HOME/.codex/models.json"
 
 这适合个人信任的开发容器或隔离环境，不适合直接用于不受信任的代码、生产主机或含敏感数据的工作区。若环境风险不同，应先调整 `config.toml`，再运行安装脚本。
 
-`auth.json` 仅保留在本机，不要强制添加。`config.toml` 现在把 `custom` provider 的 bearer token 写死在 `experimental_bearer_token` 并随仓库提交，因此本仓库含有一个凭据，应按私密仓库处理，不要公开分发或推送到公共远端；token 轮换或泄露时更新该字段。除此之外不要把其他 API 密钥写入模型 JSON 或 Git 历史。
+`auth.json` 仅保留在本机，不要强制添加。`install.sh` 现在把 `custom` provider 的 bearer token 写死在 `experimental_bearer_token` 并随仓库提交，因此本仓库含有一个凭据，应按私密仓库处理，不要公开分发或推送到公共远端；token 轮换或泄露时更新该字段。除此之外不要把其他 API 密钥写入模型 JSON 或 Git 历史。
 
 ## 故障排查
 

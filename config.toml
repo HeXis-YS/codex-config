@@ -1,6 +1,7 @@
 # Codex configuration for Docker sandbox
 # This configuration enables "yolo mode" - no approvals, full access
 # No model is pinned here: the default comes from the lowest-priority entry in model_catalog_json.
+# The provider placeholder below is replaced by install.sh with the selected backend.
 
 approval_policy = "never"
 sandbox_mode = "danger-full-access"
@@ -18,11 +19,7 @@ goals = true
 multi_agent = true
 multi_agent_v2 = true
 
-[model_providers.custom]
-name = "hexis.moe"
-base_url = "https://api.deepseek.com/"
-experimental_bearer_token = "sbx-cs-deepseek"
-supports_standalone_web_search = true
+# __CUSTOM_PROVIDER__
 
 [agents]
 enabled = true

@@ -70,18 +70,31 @@ case "$selected_profile" in
     ""|deepseek|higress) ;;
     *) die "unknown profile: $selected_profile (expected deepseek or higress)" ;;
 esac
-# config.toml already carries the deepseek endpoint; only other backends need
-# the installed [model_providers.custom] block rewritten.
+deepseek_provider='[model_providers.custom]
+name = "hexis.moe"
+base_url = "https://api.deepseek.com/"
+experimental_bearer_token = "sbx-cs-deepseek"
+supports_standalone_web_search = true'
+
+higress_provider='[model_providers.custom]
+name = "Higress"
+base_url = "http://host.docker.internal:8080/v1/"
+supports_standalone_web_search = true'
+
+# Replace the provider placeholder in the installed config with the whole
+# [model_providers.custom] section of the selected backend.
 set_custom_provider() {
-    case "$selected_profile" in
-        higress)
-            sed -i \
-                -e 's|^name = ".*"$|name = "Higress"|' \
-                -e 's|^base_url = ".*"$|base_url = "http://host.docker.internal:8080/v1/"|' \
-                -e '\|^experimental_bearer_token = |d' \
-                "$codex_dir/config.toml"
-            ;;
-    esac
+    local section
+    if [ "$selected_profile" = higress ]; then
+        section="$higress_provider"
+    else
+        section="$deepseek_provider"
+    fi
+    CUSTOM_PROVIDER_SECTION="$section" awk '
+        /^# __CUSTOM_PROVIDER__$/ { print ENVIRON["CUSTOM_PROVIDER_SECTION"]; next }
+        { print }
+    ' "$codex_dir/config.toml" > "$codex_dir/.config.toml.staged"
+    mv -f "$codex_dir/.config.toml.staged" "$codex_dir/config.toml"
 }
 # Check codex before attempting any package-manager operation.
 command_exists codex || die 'codex command was not found; install Codex CLI and retry.'
@@ -111,6 +124,8 @@ retired_skills=(analyze write-code use-git)
 for source_file in config.toml AGENTS.global.md; do
     [ -f "$script_dir/$source_file" ] || die "required source file is missing: $script_dir/$source_file"
 done
+grep -q '^# __CUSTOM_PROVIDER__$' "$script_dir/config.toml" \
+    || die 'config.toml is missing the # __CUSTOM_PROVIDER__ placeholder'
 [ -d "$script_dir/models" ] || die "required model directory is missing: $script_dir/models"
 [ -d "$skills_source_dir" ] || die "required skill directory is missing: $skills_source_dir"
 
