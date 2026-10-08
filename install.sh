@@ -66,8 +66,12 @@ shopt -s nullglob
 skill_source_dirs=("$skills_source_dir"/*)
 shopt -u nullglob
 
-catalog_file="$script_dir/models/deepseek.json"
-[ -f "$catalog_file" ] || die "required model catalog is missing: $catalog_file"
+catalog_sources=("$script_dir/models/deepseek.json" "$script_dir/models/gateway.json")
+for catalog_source in "${catalog_sources[@]}"; do
+    [ -f "$catalog_source" ] || die "required model catalog is missing: $catalog_source"
+done
+profile_file="$script_dir/gateway.config.toml"
+[ -f "$profile_file" ] || die "required profile file is missing: $profile_file"
 
 [ "${#skill_source_dirs[@]}" -gt 0 ] || die "no skills were found in $skills_source_dir"
 for skill_source_dir in "${skill_source_dirs[@]}"; do
@@ -120,6 +124,7 @@ fi
 
 install -m 0644 "$script_dir/config.toml" "$codex_dir/config.toml"
 install -m 0644 "$script_dir/AGENTS.global.md" "$codex_dir/AGENTS.md"
+install -m 0644 "$profile_file" "$codex_dir/gateway.config.toml"
 for skill_source_dir in "${skill_source_dirs[@]}"; do
     skill_name="${skill_source_dir##*/}"
     skill_install_dir="$skills_install_dir/$skill_name"
@@ -162,18 +167,25 @@ catalog_filter='
     )
 '
 
-jq -e "$catalog_filter" "$catalog_file" >/dev/null \
-    || die "invalid model catalog fragment: $catalog_file"
+catalog_targets=("$codex_dir/models.json" "$codex_dir/models.gateway.json")
+for catalog_index in "${!catalog_sources[@]}"; do
+    catalog_source="${catalog_sources[$catalog_index]}"
+    catalog_target="${catalog_targets[$catalog_index]}"
+    jq -e "$catalog_filter" "$catalog_source" >/dev/null \
+        || die "invalid model catalog fragment: $catalog_source"
 
-# Stage the catalog beside its destination so an interrupted copy cannot leave a partial file.
-staged_models="$(mktemp "$codex_dir/.models.json.XXXXXX")" \
-    || die "failed to create a staging file in $codex_dir"
-install -m 0644 "$catalog_file" "$staged_models" \
-    || die "failed to stage the model catalog in $codex_dir"
-mv -f "$staged_models" "$codex_dir/models.json" \
-    || die "failed to install the model catalog in $codex_dir"
-staged_models=""
+    # Stage the catalog beside its destination so an interrupted copy cannot leave a partial file.
+    staged_models="$(mktemp "$codex_dir/.models.json.XXXXXX")" \
+        || die "failed to create a staging file in $codex_dir"
+    install -m 0644 "$catalog_source" "$staged_models" \
+        || die "failed to stage the model catalog in $codex_dir"
+    mv -f "$staged_models" "$catalog_target" \
+        || die "failed to install the model catalog in $codex_dir"
+    staged_models=""
+done
 
-model_count="$(jq '.models | length' "$codex_dir/models.json")"
-printf 'Installed Codex configuration and %s models to %s\n' "$model_count" "$codex_dir"
+printf 'Installed Codex configuration to %s\n' "$codex_dir"
+for catalog_target in "${catalog_targets[@]}"; do
+    printf 'Installed %s models to %s\n' "$(jq '.models | length' "$catalog_target")" "$catalog_target"
+done
 printf 'Installed ELI5 skill to %s\n' "$eli5_install_dir"

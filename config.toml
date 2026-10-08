@@ -25,6 +25,12 @@ base_url = "https://api.deepseek.com/"
 env_key = "API_KEY"
 supports_standalone_web_search = true
 
+[model_providers.gateway]
+name = "CC Switch"
+base_url = "http://host.docker.internal:8080/v1/"
+env_key = "API_KEY"
+supports_standalone_web_search = true
+
 [agents]
 enabled = true
 max_concurrent_threads_per_session = 8
