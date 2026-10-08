@@ -7,10 +7,9 @@
 | 路径 | 作用 |
 | --- | --- |
 | [`AGENTS.md`](AGENTS.md) | 本仓库的项目级开发规则，用于约束可分发配置、规则和技能的编写与审查；不会被安装。 |
-| [`config.toml`](config.toml) | Codex 全局配置：自定义模型服务、网页搜索开关、Memory、长上下文和多 Agent 设置。 |
-| [`higress.config.toml`](higress.config.toml) | Higress provider 的 profile 源文件；安装为 `~/.codex/higress.config.toml`，用 `codex --profile higress` 叠加到主配置。 |
+| [`config.toml`](config.toml) | 唯一的 Codex 全局配置：自定义模型服务、网页搜索开关、Memory、长上下文和多 Agent 设置。默认 provider 为 `custom`（deepseek 端点），安装时可用 `--profile` 让 `install.sh` 改写这一段。 |
 | [`AGENTS.global.md`](AGENTS.global.md) | 全局 Agent 规则的仓库源文件；安装时复制为 `~/.codex/AGENTS.md`。文件名带有 `.global`，使它不会在本仓库中作为项目级指令与 `AGENTS.md` 同时加载。 |
-| [`models/`](models/) | 自定义模型目录。每个 JSON 文件都是一个 `{ "models": [...] }` 模型目录片段；`deepseek.json` 和 `higress.json` 分别安装为 `~/.codex/models.json` 和 `~/.codex/models.higress.json`，`glm.json` 不单独安装，只作为 `higress.json` 中 GLM 条目的来源。 |
+| [`models/`](models/) | 自定义模型目录。每个 JSON 文件都是一个 `{ "models": [...] }` 模型目录片段；安装时按所选 profile 把对应的一份安装为 `~/.codex/models.json`（默认 `deepseek.json`）。`glm.json` 不单独安装，只作为 `higress.json` 中 GLM 条目的来源。 |
 | [`install.sh`](install.sh) | 将配置、全局规则、个人技能和模型目录安装到当前用户环境，并清理本仓库不再分发的旧 skill。 |
 | [`skills/`](skills/) | 随仓库版本化的个人技能；安装脚本会安装其中的全部 skill。 |
 | ELI5 | 外部 Codex 技能；安装脚本会从 GitHub 克隆并安装到 `~/.codex/skills/eli5`。 |
@@ -28,18 +27,14 @@ cd codex-config
 ./install.sh
 ```
 
-安装时可以传入 `--profile <name>`（例如 `./install.sh --profile higress`），让仓库根目录下 `<name>.config.toml` 成为安装后的默认 provider；不传 `--profile` 时安装仓库默认配置（provider 为 `custom`）。运行期仍可用 `codex --profile <name>` 临时切换。
+仓库只维护一份配置。安装时可以传入 `--profile <name>` 选择后端：`deepseek`（默认，配置保持原样）或 `higress`。选择 `higress` 时 `install.sh` 改写安装后 `config.toml` 的 `[model_providers.custom]`（指向 `http://host.docker.internal:8080/v1/`，不要 bearer token），并把 `~/.codex/models.json` 换成对应的模型列表。两种情况下 provider id 都是 `custom`，既有的会话记录不会失效。
 
 脚本使用当前用户的 `HOME`，安装结果位于：
 
 ```text
-~/.codex/config.toml   <- config.toml
+~/.codex/config.toml   <- config.toml（--profile higress 时改写了 [model_providers.custom]）
 ~/.codex/AGENTS.md     <- AGENTS.global.md
-~/.codex/models.json   <- models/deepseek.json 安装后的目录
-~/.codex/higress.config.toml
-                         <- higress.config.toml
-~/.codex/models.higress.json
-                         <- models/higress.json 安装后的目录
+~/.codex/models.json   <- models/<profile>.json 安装后的目录
 ~/.codex/skills/write-todo/
                          <- skills/write-todo/
 ~/.codex/skills/write-lessons/
@@ -68,12 +63,12 @@ git config --global user.name "HeXis-YS"
 `install.sh` 会先校验依赖，然后：
 
 1. 创建 `~/.codex`、`~/.config/git` 和技能安装目录。
-2. 安装 `config.toml`、仓库根目录下所有 `*.config.toml` profile、全局规则和 `skills/` 下的全部 skill，并删除本仓库先前安装的 `analyze`、`write-code`、`use-git` skill 目录；其他 skill 不受影响。
-3. 校验 `models/deepseek.json` 和 `models/higress.json`，分别写入 `~/.codex/models.json` 和 `~/.codex/models.higress.json`；不读取 Codex 自带或 Z.ai 模型目录，也不进行合并。
+2. 安装 `config.toml`、全局规则和 `skills/` 下的全部 skill，并删除本仓库先前安装的 `analyze`、`write-code`、`use-git` skill 目录；其他 skill 不受影响。
+3. 校验 `models/<profile>.json` 并写入 `~/.codex/models.json`；不读取 Codex 自带或 Z.ai 模型目录，也不进行合并。
 4. 克隆 ELI5 仓库并将 `skills/eli5` 安装到 `~/.codex/skills/eli5`。
 5. 使用临时文件替换目标文件，避免中断时留下不完整目录。
 6. 将 `.codex` 写入 `~/.config/git/ignore`。
-7. 传入 `--profile <name>` 时，用仓库根目录下 `<name>.config.toml` 的 `model`、`model_provider`、`model_catalog_json` 覆盖已安装 `config.toml` 中的同名键，使该 profile 成为默认 provider；`<name>` 不存在时脚本直接报错。
+7. 传入 `--profile <name>` 时改写安装后 `config.toml` 的 `[model_providers.custom]`，并在安装前校验 `<name>` 属于 `deepseek`、`higress`，其他取值直接报错。脚本同时删除早期版本安装的 `~/.codex/higress.config.toml`、`~/.codex/gateway.config.toml`、`~/.codex/models.gateway.json` 和 `~/.codex/models.higress.json`。
 
 > 如果检测到旧的 `~/.agents/skills/`，脚本会将本仓库管理的技能和 ELI5 迁移到 `~/.codex/skills/`；其他未管理的技能不会被删除。
 
@@ -85,7 +80,10 @@ git config --global user.name "HeXis-YS"
 test "$(git config --global user.email)" = "40174982+HeXis-YS@users.noreply.github.com"
 test "$(git config --global user.name)" = "HeXis-YS"
 test -f "$HOME/.codex/config.toml"
-test -f "$HOME/.codex/higress.config.toml"
+grep -q '^model_provider = "custom"$' "$HOME/.codex/config.toml"
+test "$(grep -c '^\[model_providers\.' "$HOME/.codex/config.toml")" = 1
+test ! -e "$HOME/.codex/higress.config.toml"
+test ! -e "$HOME/.codex/models.higress.json"
 test -f "$HOME/.codex/AGENTS.md"
 cmp AGENTS.global.md "$HOME/.codex/AGENTS.md"
 test -f "$HOME/.codex/skills/write-todo/SKILL.md"
@@ -95,27 +93,29 @@ test -f "$HOME/.codex/skills/eli5/SKILL.md"
 test ! -e "$HOME/.codex/skills/analyze" && test ! -L "$HOME/.codex/skills/analyze"
 test ! -e "$HOME/.codex/skills/write-code" && test ! -L "$HOME/.codex/skills/write-code"
 test ! -e "$HOME/.codex/skills/use-git" && test ! -L "$HOME/.codex/skills/use-git"
-jq -r '.models[].slug' "$HOME/.codex/models.json" "$HOME/.codex/models.higress.json"
+jq -r '.models[].slug' "$HOME/.codex/models.json"
 ```
 
 安装脚本分发的自定义模型：
 
-| 模型目录 | provider | 模型 |
+| 模型列表 | 对应 profile 与端点 | 模型 |
 | --- | --- | --- |
-| `models/deepseek.json` | `custom`（hexis.moe，`https://api.deepseek.com/`） | `deepseek-flash`、`deepseek-v4-pro` |
-| `models/higress.json` | `higress`（Higress，`http://host.docker.internal:8080/v1/`） | `deepseek-v4.1-flash`、`deepseek-v4-pro`、`ccs-higress/ZHIPU/GLM-5.3-Flash`、`ccs-higress/glm-5.3` |
+| `models/deepseek.json` | 默认（`custom` 指向 `https://api.deepseek.com/`） | `deepseek-flash`、`deepseek-v4-pro` |
+| `models/higress.json` | `--profile higress`（`custom` 指向 `http://host.docker.internal:8080/v1/`） | `deepseek-v4.1-flash`、`deepseek-v4-pro`、`ccs-higress/ZHIPU/GLM-5.3-Flash`、`ccs-higress/glm-5.3` |
 
-该端点的 `/v1/models` 返回 4 个 slug，但其中大量字段由网关自行填充，不能直接作为模型目录。`models/higress.json` 因此由仓库中的 `models/deepseek.json` 与 `models/glm.json` 组合而成：只把 slug 改成网关实际接受的名字（`deepseek-flash`→`deepseek-v4.1-flash`、`glm-5.3-flash`→`ccs-higress/ZHIPU/GLM-5.3-Flash`、`glm-5.3`→`ccs-higress/glm-5.3`），并把 `priority` 重排为 1–4，其余字段与源文件逐字段一致。四个 slug 在 `/v1/responses` 上均返回 200；`deepseek-flash` 与 `glm-5.3-flash` 直连该端点会 404，GLM 必须带 `ccs-higress/` 前缀（`ZHIPU/GLM-5.3-Flash` 会 400）。该端点不校验鉴权，无 `Authorization` 头也返回 200，因此 `model_providers.higress` 不声明 `env_key`（声明后 Codex 会因缺少环境变量而拒绝启动）。该 provider 通过 profile 使用：
+配置里不写 `model` 与 `model_reasoning_effort`：默认模型随所装的模型列表变化，取其中 `priority` 最小的条目（`deepseek.json` → `deepseek-flash`，`higress.json` → `deepseek-v4.1-flash`）。所以端点和模型列表必须成套更换，`--profile` 做的正是这件事。
+
+该端点的 `/v1/models` 返回 4 个 slug，但其中大量字段由网关自行填充，不能直接作为模型目录。`models/higress.json` 因此由仓库中的 `models/deepseek.json` 与 `models/glm.json` 组合而成：只把 slug 改成网关实际接受的名字（`deepseek-flash`→`deepseek-v4.1-flash`、`glm-5.3-flash`→`ccs-higress/ZHIPU/GLM-5.3-Flash`、`glm-5.3`→`ccs-higress/glm-5.3`），并把 `priority` 重排为 1–4，其余字段与源文件逐字段一致。四个 slug 在 `/v1/responses` 上均返回 200；`deepseek-flash` 与 `glm-5.3-flash` 直连该端点会 404，GLM 必须带 `ccs-higress/` 前缀（`ZHIPU/GLM-5.3-Flash` 会 400）。该端点不校验鉴权，无 `Authorization` 头也返回 200，因此改写后的 `[model_providers.custom]` 不声明 `env_key`（声明后 Codex 会因缺少环境变量而拒绝启动）。切到该后端：
 
 ```bash
-codex --profile higress
+./install.sh --profile higress
 ```
 
 `models/glm.json` 仍保留在仓库中，但安装脚本不会安装其中的 Z.ai 模型；也不会安装 Codex 自带的 OpenAI 模型。
 
 ## 日常迭代与迁移
 
-修改配置、规则、`skills/`、`models/*.json` 或 profile 文件后提交 Git；在其他环境执行 `git pull` 后重新运行 `./install.sh` 即可同步。重新安装会覆盖上述 `~/.codex` 文件和 `skills/` 中同名的用户级 skill；目前安装 `models/deepseek.json` 与 `models/higress.json` 两个模型目录。
+修改配置、规则、`skills/` 或 `models/*.json` 后提交 Git；在其他环境执行 `git pull` 后重新运行 `./install.sh` 即可同步。重新安装会覆盖上述 `~/.codex` 文件和 `skills/` 中同名的用户级 skill，并只安装所选 profile 的那一份模型列表。
 
 ### 任务恢复
 
@@ -135,7 +135,7 @@ codex --profile higress
 
 实际模型条目通常还需要完整的上下文窗口、推理等级、工具能力和服务端兼容性字段；可参考 [`models/deepseek.json`](models/deepseek.json)。每个 `slug` 应唯一；安装脚本读取 `catalog_sources` 中列出的模型文件。
 
-迁移到新环境的最小流程是：安装 Codex CLI、完成认证、克隆本仓库、运行安装脚本。模型服务地址和 API 兼容性由 [`config.toml`](config.toml) 中的 `model_providers.custom` 和 `model_providers.higress` 决定；目标环境必须能够访问这两个服务，其中 `custom` 的 bearer token 已写死在 `config.toml`，`higress` 不鉴权、无需任何密钥。技能安装到 `~/.codex/skills/`，由 Codex 从该目录发现。
+迁移到新环境的最小流程是：安装 Codex CLI、完成认证、克隆本仓库、运行安装脚本。模型服务地址由 [`config.toml`](config.toml) 的 `[model_providers.custom]` 与 `--profile` 共同决定：默认指向 `https://api.deepseek.com/`，bearer token 已写死在该文件；`--profile higress` 则把这一段改写为 `http://host.docker.internal:8080/v1/`，该端点不鉴权、无需任何密钥。目标环境必须能够访问所选端点的服务。技能安装到 `~/.codex/skills/`，由 Codex 从该目录发现。
 
 ## 配置要点与安全边界
 

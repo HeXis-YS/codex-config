@@ -31,14 +31,14 @@ install_jq() {
     command_exists jq || die 'jq installation completed, but jq is still unavailable on PATH.'
 }
 
-default_profile=""
+selected_profile=""
 
 usage() {
     printf 'usage: %s [--profile <name>]\n' "${0##*/}" >&2
-    printf '  Installs the repository config. With --profile <name>, the installed\n' >&2
-    printf '  ~/.codex/config.toml takes model, model_provider and model_catalog_json\n' >&2
-    printf '  from <name>.config.toml, so that profile becomes the default provider.\n' >&2
-    printf '  Without --profile the repository default config is installed unchanged.\n' >&2
+    printf '  Installs config.toml, global rules, skills, and the model list of the\n' >&2
+    printf '  selected profile as ~/.codex/models.json. --profile <name> also points\n' >&2
+    printf '  the custom provider of the installed config at that backend.\n' >&2
+    printf '  Profiles: deepseek (default), higress.\n' >&2
 }
 
 parse_args() {
@@ -46,11 +46,11 @@ parse_args() {
         case "$1" in
             --profile)
                 [ "$#" -ge 2 ] || die 'the --profile option requires a name'
-                default_profile="$2"
+                selected_profile="$2"
                 shift 2
                 ;;
             --profile=*)
-                default_profile="${1#--profile=}"
+                selected_profile="${1#--profile=}"
                 shift
                 ;;
             -h|--help)
@@ -65,32 +65,24 @@ parse_args() {
     done
 }
 
-# Print the value of a top-level `key = "value"` line from a profile file.
-profile_value() {
-    sed -n "s/^$2 = \"\\(.*\\)\"\$/\\1/p" "$1" | head -n 1
-}
-
-# Make one profile the default provider in an installed config.toml.
-apply_profile_defaults() {
-    local profile_source="$1"
-    local target_config="$2"
-    local selected_model selected_provider selected_catalog
-    selected_model="$(profile_value "$profile_source" model)"
-    selected_provider="$(profile_value "$profile_source" model_provider)"
-    selected_catalog="$(profile_value "$profile_source" model_catalog_json)"
-    [ -n "$selected_provider" ] || die "$profile_source does not set model_provider"
-    [ -n "$selected_model" ] || die "$profile_source does not set model"
-    sed -i \
-        -e "s|^model = \".*\"\$|model = \"$selected_model\"|" \
-        -e "s|^model_provider = \".*\"\$|model_provider = \"$selected_provider\"|" \
-        "$target_config"
-    if [ -n "$selected_catalog" ]; then
-        sed -i -e "s|^model_catalog_json = \".*\"\$|model_catalog_json = \"$selected_catalog\"|" \
-            "$target_config"
-    fi
-}
-
 parse_args "$@"
+case "$selected_profile" in
+    ""|deepseek|higress) ;;
+    *) die "unknown profile: $selected_profile (expected deepseek or higress)" ;;
+esac
+# config.toml already carries the deepseek endpoint; only other backends need
+# the installed [model_providers.custom] block rewritten.
+set_custom_provider() {
+    case "$selected_profile" in
+        higress)
+            sed -i \
+                -e 's|^name = ".*"$|name = "Higress"|' \
+                -e 's|^base_url = ".*"$|base_url = "http://host.docker.internal:8080/v1/"|' \
+                -e '\|^experimental_bearer_token = |d' \
+                "$codex_dir/config.toml"
+            ;;
+    esac
+}
 # Check codex before attempting any package-manager operation.
 command_exists codex || die 'codex command was not found; install Codex CLI and retry.'
 command_exists git || die 'git command was not found; install Git and retry.'
@@ -126,14 +118,9 @@ shopt -s nullglob
 skill_source_dirs=("$skills_source_dir"/*)
 shopt -u nullglob
 
-catalog_sources=("$script_dir/models/deepseek.json" "$script_dir/models/higress.json")
-for catalog_source in "${catalog_sources[@]}"; do
-    [ -f "$catalog_source" ] || die "required model catalog is missing: $catalog_source"
-done
-shopt -s nullglob
-profile_files=("$script_dir"/*.config.toml)
-shopt -u nullglob
-[ "${#profile_files[@]}" -gt 0 ] || die "no profile file (*.config.toml) was found in $script_dir"
+profile_name="${selected_profile:-deepseek}"
+catalog_source="$script_dir/models/$profile_name.json"
+[ -f "$catalog_source" ] || die "required model catalog is missing: $catalog_source"
 
 [ "${#skill_source_dirs[@]}" -gt 0 ] || die "no skills were found in $skills_source_dir"
 for skill_source_dir in "${skill_source_dirs[@]}"; do
@@ -185,19 +172,14 @@ if [ -d "$legacy_skills_install_dir" ]; then
 fi
 
 install -m 0644 "$script_dir/config.toml" "$codex_dir/config.toml"
+set_custom_provider
 install -m 0644 "$script_dir/AGENTS.global.md" "$codex_dir/AGENTS.md"
-for profile_file in "${profile_files[@]}"; do
-    [ -f "$profile_file" ] || die "profile is not a regular file: $profile_file"
-    install -m 0644 "$profile_file" "$codex_dir/${profile_file##*/}"
-done
-if [ -n "$default_profile" ]; then
-    selected_profile_source="$script_dir/$default_profile.config.toml"
-    [ -f "$selected_profile_source" ] \
-        || die "unknown profile: $default_profile (no such file $selected_profile_source)"
-    apply_profile_defaults "$selected_profile_source" "$codex_dir/config.toml"
-fi
-# Remove the renamed profile and catalog installed by earlier versions of this repository.
-for stale_artifact in "$codex_dir/gateway.config.toml" "$codex_dir/models.gateway.json"; do
+# Remove the profile files and catalogs installed by earlier versions of this repository.
+for stale_artifact in \
+    "$codex_dir/higress.config.toml" \
+    "$codex_dir/gateway.config.toml" \
+    "$codex_dir/models.gateway.json" \
+    "$codex_dir/models.higress.json"; do
     if [ -e "$stale_artifact" ] || [ -L "$stale_artifact" ]; then
         rm -f -- "$stale_artifact"
     fi
@@ -244,28 +226,20 @@ catalog_filter='
     )
 '
 
-catalog_targets=("$codex_dir/models.json" "$codex_dir/models.higress.json")
-for catalog_index in "${!catalog_sources[@]}"; do
-    catalog_source="${catalog_sources[$catalog_index]}"
-    catalog_target="${catalog_targets[$catalog_index]}"
-    jq -e "$catalog_filter" "$catalog_source" >/dev/null \
-        || die "invalid model catalog fragment: $catalog_source"
+catalog_target="$codex_dir/models.json"
+jq -e "$catalog_filter" "$catalog_source" >/dev/null \
+    || die "invalid model catalog fragment: $catalog_source"
 
-    # Stage the catalog beside its destination so an interrupted copy cannot leave a partial file.
-    staged_models="$(mktemp "$codex_dir/.models.json.XXXXXX")" \
-        || die "failed to create a staging file in $codex_dir"
-    install -m 0644 "$catalog_source" "$staged_models" \
-        || die "failed to stage the model catalog in $codex_dir"
-    mv -f "$staged_models" "$catalog_target" \
-        || die "failed to install the model catalog in $codex_dir"
-    staged_models=""
-done
+# Stage the catalog beside its destination so an interrupted copy cannot leave a partial file.
+staged_models="$(mktemp "$codex_dir/.models.json.XXXXXX")" \
+    || die "failed to create a staging file in $codex_dir"
+install -m 0644 "$catalog_source" "$staged_models" \
+    || die "failed to stage the model catalog in $codex_dir"
+mv -f "$staged_models" "$catalog_target" \
+    || die "failed to install the model catalog in $codex_dir"
+staged_models=""
 
 printf 'Installed Codex configuration to %s\n' "$codex_dir"
-for catalog_target in "${catalog_targets[@]}"; do
-    printf 'Installed %s models to %s\n' "$(jq '.models | length' "$catalog_target")" "$catalog_target"
-done
+printf 'Installed %s models from profile %s to %s\n' \
+    "$(jq '.models | length' "$catalog_target")" "$profile_name" "$catalog_target"
 printf 'Installed ELI5 skill to %s\n' "$eli5_install_dir"
-if [ -n "$default_profile" ]; then
-    printf 'Default provider taken from profile %s\n' "$default_profile"
-fi
