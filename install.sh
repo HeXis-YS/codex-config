@@ -66,11 +66,11 @@ shopt -s nullglob
 skill_source_dirs=("$skills_source_dir"/*)
 shopt -u nullglob
 
-catalog_sources=("$script_dir/models/deepseek.json" "$script_dir/models/gateway.json")
+catalog_sources=("$script_dir/models/deepseek.json" "$script_dir/models/higress.json")
 for catalog_source in "${catalog_sources[@]}"; do
     [ -f "$catalog_source" ] || die "required model catalog is missing: $catalog_source"
 done
-profile_file="$script_dir/gateway.config.toml"
+profile_file="$script_dir/higress.config.toml"
 [ -f "$profile_file" ] || die "required profile file is missing: $profile_file"
 
 [ "${#skill_source_dirs[@]}" -gt 0 ] || die "no skills were found in $skills_source_dir"
@@ -124,7 +124,13 @@ fi
 
 install -m 0644 "$script_dir/config.toml" "$codex_dir/config.toml"
 install -m 0644 "$script_dir/AGENTS.global.md" "$codex_dir/AGENTS.md"
-install -m 0644 "$profile_file" "$codex_dir/gateway.config.toml"
+install -m 0644 "$profile_file" "$codex_dir/higress.config.toml"
+# Remove the renamed profile and catalog installed by earlier versions of this repository.
+for stale_artifact in "$codex_dir/gateway.config.toml" "$codex_dir/models.gateway.json"; do
+    if [ -e "$stale_artifact" ] || [ -L "$stale_artifact" ]; then
+        rm -f -- "$stale_artifact"
+    fi
+done
 for skill_source_dir in "${skill_source_dirs[@]}"; do
     skill_name="${skill_source_dir##*/}"
     skill_install_dir="$skills_install_dir/$skill_name"
@@ -167,7 +173,7 @@ catalog_filter='
     )
 '
 
-catalog_targets=("$codex_dir/models.json" "$codex_dir/models.gateway.json")
+catalog_targets=("$codex_dir/models.json" "$codex_dir/models.higress.json")
 for catalog_index in "${!catalog_sources[@]}"; do
     catalog_source="${catalog_sources[$catalog_index]}"
     catalog_target="${catalog_targets[$catalog_index]}"

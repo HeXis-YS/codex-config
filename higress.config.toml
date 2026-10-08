@@ -1,0 +1,7 @@
+# Higress provider 的 Codex profile。
+# 用法：codex --profile higress
+# 叠加在 config.toml 之上，只切换模型服务提供方和模型目录。
+
+model = "ccs-higress/ZHIPU/GLM-5.3-Flash"
+model_provider = "higress"
+model_catalog_json = "~/.codex/models.higress.json"
