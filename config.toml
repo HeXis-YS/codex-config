@@ -24,11 +24,6 @@ base_url = "https://api.deepseek.com/"
 experimental_bearer_token = "sbx-cs-deepseek"
 supports_standalone_web_search = true
 
-[model_providers.higress]
-name = "Higress"
-base_url = "http://host.docker.internal:8080/v1/"
-supports_standalone_web_search = true
-
 [agents]
 enabled = true
 max_concurrent_threads_per_session = 8
