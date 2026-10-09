@@ -38,7 +38,7 @@ usage() {
     printf '  Installs config.toml, global rules, skills, and the model list of the\n' >&2
     printf '  selected profile as ~/.codex/models.json. --profile <name> also points\n' >&2
     printf '  the custom provider of the installed config at that backend.\n' >&2
-    printf '  Profiles: deepseek (default), higress.\n' >&2
+    printf '  Profiles: deepseek (default), higress, openlux.\n' >&2
 }
 
 parse_args() {
@@ -67,8 +67,8 @@ parse_args() {
 
 parse_args "$@"
 case "$selected_profile" in
-    ""|deepseek|higress) ;;
-    *) die "unknown profile: $selected_profile (expected deepseek or higress)" ;;
+    ""|deepseek|higress|openlux) ;;
+    *) die "unknown profile: $selected_profile (expected deepseek, higress, or openlux)" ;;
 esac
 deepseek_provider='[model_providers.custom]
 name = "hexis.moe"
@@ -81,12 +81,20 @@ name = "Higress"
 base_url = "http://host.docker.internal:8080/v1/"
 supports_standalone_web_search = true'
 
+openlux_provider='[model_providers.custom]
+name = "OpenLux"
+base_url = "https://api.openlux.ai/v1/"
+experimental_bearer_token = "sbx-cs-openlux"
+supports_standalone_web_search = true'
+
 # Replace the provider placeholder in the installed config with the whole
 # [model_providers.custom] section of the selected backend.
 set_custom_provider() {
     local section
     if [ "$selected_profile" = higress ]; then
         section="$higress_provider"
+    elif [ "$selected_profile" = openlux ]; then
+        section="$openlux_provider"
     else
         section="$deepseek_provider"
     fi
@@ -133,9 +141,39 @@ shopt -s nullglob
 skill_source_dirs=("$skills_source_dir"/*)
 shopt -u nullglob
 
+# The generated catalog, the staged catalog, and the ELI5 checkout are removed
+# on every exit path, including the failures below that happen before staging.
+staged_models=""
+generated_catalog=""
+eli5_tmp_dir=""
+cleanup() {
+    if [ -n "$staged_models" ] && [ -e "$staged_models" ]; then
+        rm -f -- "$staged_models"
+    fi
+    if [ -n "$generated_catalog" ] && [ -e "$generated_catalog" ]; then
+        rm -f -- "$generated_catalog"
+    fi
+    if [ -n "$eli5_tmp_dir" ] && [ -d "$eli5_tmp_dir" ]; then
+        rm -rf -- "$eli5_tmp_dir"
+    fi
+}
+trap cleanup EXIT
+
 profile_name="${selected_profile:-deepseek}"
 catalog_source="$script_dir/models/$profile_name.json"
-[ -f "$catalog_source" ] || die "required model catalog is missing: $catalog_source"
+if [ "$profile_name" = openlux ]; then
+    # The OpenLux profile serves the official OpenAI models, so its catalog is
+    # read from the installed CLI at install time instead of being kept as a
+    # snapshot in this repository. `codex debug models` without --bundled would
+    # refresh over the network; --bundled keeps the install hermetic.
+    catalog_source="$(mktemp "${TMPDIR:-/tmp}/codex-config-catalog.XXXXXX")" \
+        || die 'failed to create a temporary file for the model catalog.'
+    generated_catalog="$catalog_source"
+    codex debug models --bundled > "$catalog_source" \
+        || die 'failed to read the bundled model catalog from the Codex CLI.'
+else
+    [ -f "$catalog_source" ] || die "required model catalog is missing: $catalog_source"
+fi
 
 [ "${#skill_source_dirs[@]}" -gt 0 ] || die "no skills were found in $skills_source_dir"
 for skill_source_dir in "${skill_source_dirs[@]}"; do
@@ -150,18 +188,6 @@ managed_skill_names=(eli5)
 for skill_source_dir in "${skill_source_dirs[@]}"; do
     managed_skill_names+=("${skill_source_dir##*/}")
 done
-
-staged_models=""
-eli5_tmp_dir=""
-cleanup() {
-    if [ -n "$staged_models" ] && [ -e "$staged_models" ]; then
-        rm -f -- "$staged_models"
-    fi
-    if [ -n "$eli5_tmp_dir" ] && [ -d "$eli5_tmp_dir" ]; then
-        rm -rf -- "$eli5_tmp_dir"
-    fi
-}
-trap cleanup EXIT
 
 mkdir -p "$codex_dir" "$git_ignore_dir" "$skills_install_dir"
 # Migrate skills previously installed to the legacy Codex user-skill directory.
