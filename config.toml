@@ -1,7 +1,7 @@
 # Codex configuration for Docker sandbox
 # This configuration enables "yolo mode" - no approvals, full access
 # No model is pinned here: the default comes from the lowest-priority entry in model_catalog_json.
-# The provider placeholder below is replaced by install.sh with the selected backend.
+# The provider template below is filled in by install.sh for the selected backend.
 
 approval_policy = "never"
 sandbox_mode = "danger-full-access"
@@ -19,7 +19,13 @@ goals = true
 multi_agent = true
 multi_agent_v2 = true
 
-# __CUSTOM_PROVIDER__
+# Provider template: install.sh replaces the name, base_url and bearer token
+# placeholders with the values of the selected backend.
+[model_providers.custom]
+name = "__PROVIDER_NAME__"
+base_url = "__PROVIDER_BASE_URL__"
+experimental_bearer_token = "__PROVIDER_TOKEN__"
+supports_standalone_web_search = true
 
 [agents]
 enabled = true

@@ -70,38 +70,35 @@ case "$selected_profile" in
     ""|deepseek|higress|openlux) ;;
     *) die "unknown profile: $selected_profile (expected deepseek, higress, or openlux)" ;;
 esac
-deepseek_provider='[model_providers.custom]
-name = "hexis.moe"
-base_url = "https://api.deepseek.com/"
-experimental_bearer_token = "sbx-cs-deepseek"
-supports_standalone_web_search = true'
 
-higress_provider='[model_providers.custom]
-name = "Higress"
-base_url = "http://host.docker.internal:8080/v1/"
-supports_standalone_web_search = true'
-
-openlux_provider='[model_providers.custom]
-name = "OpenLux"
-base_url = "https://api.openlux.ai/v1/"
-experimental_bearer_token = "sbx-cs-openlux"
-supports_standalone_web_search = true'
-
-# Replace the provider placeholder in the installed config with the whole
-# [model_providers.custom] section of the selected backend.
+# Generate the installed config from the repository template, filling the three
+# provider fields of the selected backend; the result is staged beside its
+# destination so an interrupted install cannot leave a partial file. higress
+# serves an endpoint that ignores credentials, so its token is a placeholder:
+# Codex refuses to start when the declared token is empty.
 set_custom_provider() {
-    local section
+    local provider_name provider_base_url provider_token
     if [ "$selected_profile" = higress ]; then
-        section="$higress_provider"
+        provider_name='Higress'
+        provider_base_url='http://host.docker.internal:8080/v1/'
+        provider_token='sbx-cs-higress'
     elif [ "$selected_profile" = openlux ]; then
-        section="$openlux_provider"
+        provider_name='OpenLux'
+        provider_base_url='https://api.openlux.ai/v1/'
+        provider_token='sbx-cs-openlux'
     else
-        section="$deepseek_provider"
+        provider_name='hexis.moe'
+        provider_base_url='https://api.deepseek.com/'
+        provider_token='sbx-cs-deepseek'
     fi
-    CUSTOM_PROVIDER_SECTION="$section" awk '
-        /^# __CUSTOM_PROVIDER__$/ { print ENVIRON["CUSTOM_PROVIDER_SECTION"]; next }
-        { print }
-    ' "$codex_dir/config.toml" > "$codex_dir/.config.toml.staged"
+    sed -e "s|__PROVIDER_NAME__|$provider_name|" \
+        -e "s|__PROVIDER_BASE_URL__|$provider_base_url|" \
+        -e "s|__PROVIDER_TOKEN__|$provider_token|" \
+        "$script_dir/config.toml" > "$codex_dir/.config.toml.staged"
+    if grep -q '__PROVIDER_' "$codex_dir/.config.toml.staged"; then
+        rm -f -- "$codex_dir/.config.toml.staged"
+        die 'the installed config.toml still contains a provider placeholder'
+    fi
     mv -f "$codex_dir/.config.toml.staged" "$codex_dir/config.toml"
 }
 # Check codex before attempting any package-manager operation.
@@ -133,8 +130,10 @@ retired_skills=(analyze write-code use-git)
 for source_file in config.toml AGENTS.global.md install-codex.sh; do
     [ -f "$script_dir/$source_file" ] || die "required source file is missing: $script_dir/$source_file"
 done
-grep -q '^# __CUSTOM_PROVIDER__$' "$script_dir/config.toml" \
-    || die 'config.toml is missing the # __CUSTOM_PROVIDER__ placeholder'
+for provider_placeholder in __PROVIDER_NAME__ __PROVIDER_BASE_URL__ __PROVIDER_TOKEN__; do
+    grep -q "\"$provider_placeholder\"" "$script_dir/config.toml" \
+        || die "config.toml is missing the $provider_placeholder template field"
+done
 [ -d "$script_dir/models" ] || die "required model directory is missing: $script_dir/models"
 [ -d "$skills_source_dir" ] || die "required skill directory is missing: $skills_source_dir"
 
@@ -213,7 +212,6 @@ if [ -d "$legacy_skills_install_dir" ]; then
     rmdir "$legacy_skills_install_dir" 2>/dev/null || true
 fi
 
-install -m 0644 "$script_dir/config.toml" "$codex_dir/config.toml"
 set_custom_provider
 install -m 0644 "$script_dir/AGENTS.global.md" "$codex_dir/AGENTS.md"
 # Remove the profile files and catalogs installed by earlier versions of this repository.
