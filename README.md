@@ -39,6 +39,10 @@ cd codex-config
                          <- skills/write-todo/
 ~/.codex/skills/write-lessons/
                          <- skills/write-lessons/
+~/.codex/skills/write-report/
+                         <- skills/write-report/
+~/.codex/skills/write-prompt/
+                         <- skills/write-prompt/
 ~/.codex/skills/eli5    <- ELI5 仓库 skills/eli5
 ```
 
@@ -89,6 +93,7 @@ cmp AGENTS.global.md "$HOME/.codex/AGENTS.md"
 test -f "$HOME/.codex/skills/write-todo/SKILL.md"
 test -f "$HOME/.codex/skills/write-lessons/SKILL.md"
 test -f "$HOME/.codex/skills/write-report/SKILL.md"
+test -f "$HOME/.codex/skills/write-prompt/SKILL.md"
 test -f "$HOME/.codex/skills/eli5/SKILL.md"
 test ! -e "$HOME/.codex/skills/analyze" && test ! -L "$HOME/.codex/skills/analyze"
 test ! -e "$HOME/.codex/skills/write-code" && test ! -L "$HOME/.codex/skills/write-code"
