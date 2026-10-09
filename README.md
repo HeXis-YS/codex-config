@@ -11,6 +11,7 @@
 | [`AGENTS.global.md`](AGENTS.global.md) | 全局 Agent 规则的仓库源文件；安装时复制为 `~/.codex/AGENTS.md`。文件名带有 `.global`，使它不会在本仓库中作为项目级指令与 `AGENTS.md` 同时加载。 |
 | [`models/`](models/) | 自定义模型目录。每个 JSON 文件都是一个 `{ "models": [...] }` 模型目录片段；安装时按所选 profile 把对应的一份安装为 `~/.codex/models.json`（默认 `deepseek.json`）。`glm.json` 不单独安装，只作为 `higress.json` 中 GLM 条目的来源。 |
 | [`install.sh`](install.sh) | 将配置、全局规则、个人技能和模型目录安装到当前用户环境，并清理本仓库不再分发的旧 skill。 |
+| [`install-codex.sh`](install-codex.sh) | 以非交互方式安装 Codex CLI；是 `install.sh` 的前置步骤，不安装本仓库的配置。若 `PATH` 上已有 npm 安装的 `codex`，先执行 `npm uninstall --global @openai/codex` 再安装 standalone 版。 |
 | [`skills/`](skills/) | 随仓库版本化的个人技能；安装脚本会安装其中的全部 skill。 |
 | ELI5 | 外部 Codex 技能；安装脚本会从 GitHub 克隆并安装到 `~/.codex/skills/eli5`。 |
 | [`.gitignore`](.gitignore) | 忽略本地认证文件 `auth.json`。 |
@@ -19,11 +20,12 @@
 
 ## 快速安装
 
-在目标环境中先安装 Codex CLI，并按 CLI 的方式完成认证，然后执行：
+在目标环境中先安装 Codex CLI 并完成认证，然后执行：
 
 ```bash
 git clone <repository-url> codex-config
 cd codex-config
+./install-codex.sh   # 非交互安装 Codex CLI（会先卸载 PATH 上 npm 安装的 codex）；也可按官方方式安装
 ./install.sh
 ```
 
@@ -49,7 +51,7 @@ cd codex-config
 ### 前置条件
 
 - Bash、`cp`、`install`、`mktemp` 等常见类 Unix 工具。
-- `codex` 命令已安装并位于 `PATH` 中。
+- `codex` 命令已安装并位于 `PATH` 中（可用 `./install-codex.sh` 非交互安装；安装后若当前 shell 仍找不到 `codex`，先打开新 shell）。
 - `git` 命令已安装并位于 `PATH` 中。
 - `jq`。若缺少 `jq`，脚本会在检测到 `apt-get` 时尝试使用 root 或 `sudo` 自动安装；其他系统请先手动安装。
 
@@ -157,7 +159,7 @@ jq -r '.models[].slug' "$HOME/.codex/models.json"
 
 ## 故障排查
 
-- `codex command was not found`：确认 Codex CLI 已安装，并在运行脚本的 shell 中可由 `command -v codex` 找到。
+- `codex command was not found`：先运行 `./install-codex.sh` 或按官方方式安装 Codex CLI，并在运行脚本的 shell 中确认 `command -v codex`（新装后可能需要新 shell 刷新 PATH）。
 - `jq is missing`：在没有 `apt-get` 或没有 root/`sudo` 的环境中，先手动安装 `jq`。
 - `invalid model catalog fragment`：检查对应 JSON 是否合法，且顶层存在 `models` 数组，数组中每个条目都有非空字符串 `slug`。
 - 安装后出现其他全局 Git 忽略规则丢失：从安装前的备份恢复 `~/.config/git/ignore`，并保留其中的 `.codex` 条目。
@@ -166,6 +168,7 @@ jq -r '.models[].slug' "$HOME/.codex/models.json"
 
 ```bash
 bash -n install.sh
+bash -n install-codex.sh
 jq -e '.models | type == "array" and all(.[]; (.slug | type) == "string" and (.slug | length) > 0)' models/*.json
 git diff --check
 ```
