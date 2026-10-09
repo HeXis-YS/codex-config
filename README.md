@@ -11,7 +11,7 @@
 | [`AGENTS.global.md`](AGENTS.global.md) | 全局 Agent 规则的仓库源文件；安装时复制为 `~/.codex/AGENTS.md`。文件名带有 `.global`，使它不会在本仓库中作为项目级指令与 `AGENTS.md` 同时加载。 |
 | [`models/`](models/) | 自定义模型目录。每个 JSON 文件都是一个 `{ "models": [...] }` 模型目录片段；安装时按所选 profile 把对应的一份安装为 `~/.codex/models.json`（默认 `deepseek.json`）。`glm.json` 不单独安装，只作为 `higress.json` 中 GLM 条目的来源；`openlux` 没有对应的文件，它的模型列表在安装时从 Codex CLI 现取。 |
 | [`install.sh`](install.sh) | 将配置、全局规则、个人技能和模型目录安装到当前用户环境，并清理本仓库不再分发的旧 skill。 |
-| [`install-codex.sh`](install-codex.sh) | 以非交互方式安装 Codex CLI；是 `install.sh` 的前置步骤，不安装本仓库的配置。若 `PATH` 上已有 npm 安装的 `codex`，先执行 `npm uninstall --global @openai/codex` 再安装 standalone 版。 |
+| [`install-codex.sh`](install-codex.sh) | 以非交互方式安装 Codex CLI；是 `install.sh` 的前置步骤，不安装本仓库的配置。若 `PATH` 上已有 npm 安装的 `codex`，先执行 `npm uninstall --global @openai/codex` 再安装 standalone 版。`install.sh` 会把它复制为 `~/.local/bin/update-codex`，之后用该命令刷新 CLI。 |
 | [`skills/`](skills/) | 随仓库版本化的个人技能；安装脚本会安装其中的全部 skill。 |
 | ELI5 | 外部 Codex 技能；安装脚本会从 GitHub 克隆并安装到 `~/.codex/skills/eli5`。 |
 | [`.gitignore`](.gitignore) | 忽略本地认证文件 `auth.json`。 |
@@ -34,6 +34,8 @@ cd codex-config
 脚本使用当前用户的 `HOME`，安装结果位于：
 
 ```text
+~/.local/bin/update-codex
+                         <- install-codex.sh 安装后的副本
 ~/.codex/config.toml   <- config.toml（占位符替换为所选后端的 [model_providers.custom]）
 ~/.codex/AGENTS.md     <- AGENTS.global.md
 ~/.codex/models.json   <- models/<profile>.json 安装后的目录
@@ -75,6 +77,7 @@ git config --global user.name "HeXis-YS"
 5. 使用临时文件替换目标文件，避免中断时留下不完整目录。
 6. 将 `.codex` 写入 `~/.config/git/ignore`。
 7. 用所选后端的整段 `[model_providers.custom]` 替换安装后 `config.toml` 中的 `# __CUSTOM_PROVIDER__` 占位符，并在安装前校验 `<name>` 属于 `deepseek`、`higress`、`openlux`，其他取值或源文件缺少占位符时直接报错。脚本同时删除早期版本安装的 `~/.codex/higress.config.toml`、`~/.codex/gateway.config.toml`、`~/.codex/models.gateway.json` 和 `~/.codex/models.higress.json`。
+8. 把 `install-codex.sh` 安装为 `~/.local/bin/update-codex`（0755），用于之后非交互刷新 CLI。
 
 > 如果检测到旧的 `~/.agents/skills/`，脚本会将本仓库管理的技能和 ELI5 迁移到 `~/.codex/skills/`；其他未管理的技能不会被删除。
 
@@ -85,6 +88,7 @@ git config --global user.name "HeXis-YS"
 ```bash
 test "$(git config --global user.email)" = "40174982+HeXis-YS@users.noreply.github.com"
 test "$(git config --global user.name)" = "HeXis-YS"
+test -x "$HOME/.local/bin/update-codex"
 test -f "$HOME/.codex/config.toml"
 grep -q '^model_provider = "custom"$' "$HOME/.codex/config.toml"
 test "$(grep -c '^\[model_providers\.' "$HOME/.codex/config.toml")" = 1

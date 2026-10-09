@@ -121,6 +121,7 @@ git config --global user.name "HeXis-YS"
 script_dir="$(CDPATH= cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)"
 codex_dir="$HOME/.codex"
 git_ignore_dir="$HOME/.config/git"
+bin_install_dir="$HOME/.local/bin"
 skills_source_dir="$script_dir/skills"
 legacy_skills_install_dir="$HOME/.agents/skills"
 skills_install_dir="$HOME/.codex/skills"
@@ -129,7 +130,7 @@ eli5_install_dir="$skills_install_dir/eli5"
 retired_skills=(analyze write-code use-git)
 
 # Keep the source outside Codex's discovery names so this repository does not load it twice.
-for source_file in config.toml AGENTS.global.md; do
+for source_file in config.toml AGENTS.global.md install-codex.sh; do
     [ -f "$script_dir/$source_file" ] || die "required source file is missing: $script_dir/$source_file"
 done
 grep -q '^# __CUSTOM_PROVIDER__$' "$script_dir/config.toml" \
@@ -189,7 +190,7 @@ for skill_source_dir in "${skill_source_dirs[@]}"; do
     managed_skill_names+=("${skill_source_dir##*/}")
 done
 
-mkdir -p "$codex_dir" "$git_ignore_dir" "$skills_install_dir"
+mkdir -p "$codex_dir" "$git_ignore_dir" "$bin_install_dir" "$skills_install_dir"
 # Migrate skills previously installed to the legacy Codex user-skill directory.
 if [ -d "$legacy_skills_install_dir" ]; then
     for skill_name in "${managed_skill_names[@]}"; do
@@ -238,6 +239,10 @@ for retired_skill in "${retired_skills[@]}"; do
         rm -rf -- "$retired_skill_dir"
     fi
 done
+# Install the non-interactive CLI installer as `update-codex`, so it sits on
+# PATH next to the standalone `codex` it refreshes.
+install -m 0755 "$script_dir/install-codex.sh" "$bin_install_dir/update-codex"
+printf 'Installed update-codex to %s\n' "$bin_install_dir/update-codex"
 printf '%s\n' '.codex' > "$git_ignore_dir/ignore"
 
 eli5_tmp_dir="$(mktemp -d "${TMPDIR:-/tmp}/codex-config-eli5.XXXXXX")" \
