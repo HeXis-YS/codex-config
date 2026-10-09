@@ -79,7 +79,7 @@ esac
 set_custom_provider() {
     local provider_name provider_base_url provider_token
     if [ "$selected_profile" = higress ]; then
-        provider_name='Higress'
+        provider_name='HighGo'
         provider_base_url='http://host.docker.internal:8080/v1/'
         provider_token='sbx-cs-higress'
     elif [ "$selected_profile" = openlux ]; then
@@ -87,7 +87,7 @@ set_custom_provider() {
         provider_base_url='https://api.openlux.ai/v1/'
         provider_token='sbx-cs-openlux'
     else
-        provider_name='hexis.moe'
+        provider_name='DeepSeek'
         provider_base_url='https://api.deepseek.com/'
         provider_token='sbx-cs-deepseek'
     fi
