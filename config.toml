@@ -8,13 +8,10 @@ sandbox_mode = "danger-full-access"
 mcp_oauth_credentials_store = "file"
 
 model_provider = "custom"
-web_search = "live"
 model_catalog_json = "~/.codex/models.json"
 
 [features]
 memories = true
-goals = true
-multi_agent = true
 multi_agent_v2 = true
 
 # Provider template: install.sh replaces the name, base_url and bearer token

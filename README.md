@@ -154,8 +154,8 @@ jq -r '.models[].slug' "$HOME/.codex/models.json"
 
 - `approval_policy = "never"`
 - `sandbox_mode = "danger-full-access"`
-- `web_search = "live"`
-- 启用 memories、goals 和 multi-agent，最多 8 个并发线程
+- full-access 沙箱下使用默认的 live web search
+- 显式启用 memories 和 multi-agent v2；goals 与 multi-agent 使用 Codex 默认值
 
 这适合个人信任的开发容器或隔离环境，不适合直接用于不受信任的代码、生产主机或含敏感数据的工作区。若环境风险不同，应先调整 `config.toml`，再运行安装脚本。
 
