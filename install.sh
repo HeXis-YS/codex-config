@@ -127,7 +127,7 @@ eli5_install_dir="$skills_install_dir/eli5"
 retired_skills=(analyze write-code use-git)
 
 # Keep the source outside Codex's discovery names so this repository does not load it twice.
-for source_file in config.toml AGENTS.global.md install-codex.sh; do
+for source_file in config.toml AGENTS.global.md; do
     [ -f "$script_dir/$source_file" ] || die "required source file is missing: $script_dir/$source_file"
 done
 for provider_placeholder in __PROVIDER_NAME__ __PROVIDER_BASE_URL__ __PROVIDER_TOKEN__; do
@@ -189,7 +189,7 @@ for skill_source_dir in "${skill_source_dirs[@]}"; do
     managed_skill_names+=("${skill_source_dir##*/}")
 done
 
-mkdir -p "$codex_dir" "$git_ignore_dir" "$bin_install_dir" "$skills_install_dir"
+mkdir -p "$codex_dir" "$git_ignore_dir" "$skills_install_dir"
 # Migrate skills previously installed to the legacy Codex user-skill directory.
 if [ -d "$legacy_skills_install_dir" ]; then
     for skill_name in "${managed_skill_names[@]}"; do
@@ -214,8 +214,10 @@ fi
 
 set_custom_provider
 install -m 0644 "$script_dir/AGENTS.global.md" "$codex_dir/AGENTS.md"
-# Remove the profile files and catalogs installed by earlier versions of this repository.
+# Remove the profile files and catalogs installed by earlier versions of this
+# repository, plus the retired update-codex CLI wrapper.
 for stale_artifact in \
+    "$bin_install_dir/update-codex" \
     "$codex_dir/higress.config.toml" \
     "$codex_dir/gateway.config.toml" \
     "$codex_dir/models.gateway.json" \
@@ -237,10 +239,6 @@ for retired_skill in "${retired_skills[@]}"; do
         rm -rf -- "$retired_skill_dir"
     fi
 done
-# Install the non-interactive CLI installer as `update-codex`, so it sits on
-# PATH next to the standalone `codex` it refreshes.
-install -m 0755 "$script_dir/install-codex.sh" "$bin_install_dir/update-codex"
-printf 'Installed update-codex to %s\n' "$bin_install_dir/update-codex"
 printf '%s\n' '.codex' > "$git_ignore_dir/ignore"
 
 eli5_tmp_dir="$(mktemp -d "${TMPDIR:-/tmp}/codex-config-eli5.XXXXXX")" \

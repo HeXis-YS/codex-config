@@ -11,7 +11,6 @@
 | [`AGENTS.global.md`](AGENTS.global.md) | 全局 Agent 规则的仓库源文件；安装时复制为 `~/.codex/AGENTS.md`。文件名带有 `.global`，使它不会在本仓库中作为项目级指令与 `AGENTS.md` 同时加载。 |
 | [`models/`](models/) | 自定义模型目录。每个 JSON 文件都是一个 `{ "models": [...] }` 模型目录片段；安装时按所选 profile 把对应的一份安装为 `~/.codex/models.json`（默认 `deepseek.json`）；`openlux` 没有对应的文件，它的模型列表在安装时从 Codex CLI 现取。字段兼容性与验证方法见 [`models/README.md`](models/README.md)。 |
 | [`install.sh`](install.sh) | 将配置、全局规则、个人技能和模型目录安装到当前用户环境，并清理本仓库不再分发的旧 skill。 |
-| [`install-codex.sh`](install-codex.sh) | 以非交互方式安装 Codex CLI；是 `install.sh` 的前置步骤，不安装本仓库的配置。只要环境里有 `npm`，就先执行 `npm uninstall --global @openai/codex` 再安装 standalone 版（不判断当前 `codex` 是否来自 npm；该包未安装时 npm 以 `up to date` 正常退出，卸载失败只打印警告并继续安装）。安装成功后重启本地 app-server daemon；无法重启时只打印警告。`install.sh` 会把它复制为 `~/.local/bin/update-codex`，之后用该命令刷新 CLI。 |
 | [`skills/`](skills/) | 随仓库版本化的个人技能；安装脚本会安装其中的全部 skill。 |
 | ELI5 | 外部 Codex 技能；安装脚本会从 GitHub 克隆并安装到 `~/.codex/skills/eli5`。 |
 | [`.gitignore`](.gitignore) | 忽略本地认证文件 `auth.json`。 |
@@ -25,17 +24,16 @@
 ```bash
 git clone <repository-url> codex-config
 cd codex-config
-./install-codex.sh   # 非交互安装 Codex CLI（有 npm 就先卸载全局 @openai/codex，装完重启 app-server daemon）；也可按官方方式安装
 ./install.sh
 ```
+
+之后用 `codex update` 刷新 CLI；本仓库不再分发 CLI 安装脚本。
 
 仓库只维护一份配置。安装时 `install.sh` 把 `config.toml` 里 `[model_providers.custom]` 模板的 `name`、`base_url` 和 bearer token 替换为所选后端的取值，并安装对应 profile 的模型列表。`--profile <name>` 可选 `deepseek`（默认，指向 `https://api.deepseek.com/`）、`highgo`（指向 `http://host.docker.internal:8080/v1/`，token 为占位值 `sbx-cs-highgo`）或 `openlux`（指向 `https://api.openlux.ai/v1/`）。三种情况下 provider id 都是 `custom`，既有的会话记录不会失效。
 
 脚本使用当前用户的 `HOME`，安装结果位于：
 
 ```text
-~/.local/bin/update-codex
-                         <- install-codex.sh 安装后的副本
 ~/.codex/config.toml   <- config.toml（[model_providers.custom] 填入所选后端的 name、base_url 与 token）
 ~/.codex/AGENTS.md     <- AGENTS.global.md
 ~/.codex/models.json   <- models/<profile>.json 安装后的目录
@@ -53,7 +51,7 @@ cd codex-config
 ### 前置条件
 
 - Bash、`cp`、`install`、`mktemp` 等常见类 Unix 工具。
-- `codex` 命令已安装并位于 `PATH` 中（可用 `./install-codex.sh` 非交互安装；安装后若当前 shell 仍找不到 `codex`，先打开新 shell）。
+- `codex` 命令已安装并位于 `PATH` 中（之后用 `codex update` 刷新；新装后若当前 shell 仍找不到 `codex`，先打开新 shell）。
 - `git` 命令已安装并位于 `PATH` 中。
 - `jq`。若缺少 `jq`，脚本会在检测到 `apt-get` 时尝试使用 root 或 `sudo` 自动安装；其他系统请先手动安装。
 
@@ -77,7 +75,7 @@ git config --global user.name "HeXis-YS"
 5. 配置文件和模型目录都先写到目标目录内的临时文件再替换，避免中断时留下不完整文件。
 6. 将 `.codex` 写入 `~/.config/git/ignore`。
 7. 由 [`config.toml`](config.toml) 模板生成 `~/.codex/config.toml`，并把 `[model_providers.custom]` 的三个占位符替换为所选后端的 `name`、`base_url` 和 bearer token；并在安装前校验 `<name>` 属于 `deepseek`、`highgo`、`openlux`，其他取值或源文件缺少模板占位符时直接报错。脚本同时删除早期版本安装的 `~/.codex/higress.config.toml`、`~/.codex/gateway.config.toml`、`~/.codex/models.gateway.json` 和 `~/.codex/models.higress.json`。
-8. 把 `install-codex.sh` 安装为 `~/.local/bin/update-codex`（0755），用于之后非交互刷新 CLI。
+8. 删除早期版本安装的 `~/.local/bin/update-codex`；CLI 更新改用 `codex update`。
 9. 全部安装完成后重启本地 app-server daemon，让它在新进程里读取刚装好的 `config.toml` 与 `models.json`；无法重启时只打印警告，不影响已完成的安装。
 
 > 如果检测到旧的 `~/.agents/skills/`，脚本会将本仓库管理的技能和 ELI5 迁移到 `~/.codex/skills/`；其他未管理的技能不会被删除。
@@ -89,7 +87,7 @@ git config --global user.name "HeXis-YS"
 ```bash
 test "$(git config --global user.email)" = "40174982+HeXis-YS@users.noreply.github.com"
 test "$(git config --global user.name)" = "HeXis-YS"
-test -x "$HOME/.local/bin/update-codex"
+test ! -e "$HOME/.local/bin/update-codex"
 test -f "$HOME/.codex/config.toml"
 grep -q '^model_provider = "custom"$' "$HOME/.codex/config.toml"
 test "$(grep -c '^\[model_providers\.' "$HOME/.codex/config.toml")" = 1
@@ -165,7 +163,7 @@ jq -r '.models[].slug' "$HOME/.codex/models.json"
 
 ## 故障排查
 
-- `codex command was not found`：先运行 `./install-codex.sh` 或按官方方式安装 Codex CLI，并在运行脚本的 shell 中确认 `command -v codex`（新装后可能需要新 shell 刷新 PATH）。
+- `codex command was not found`：先按官方方式安装 Codex CLI，并在运行脚本的 shell 中确认 `command -v codex`（新装后可能需要新 shell 刷新 PATH）。
 - `could not restart the app-server daemon`：CLI 与配置已安装完成，只是 daemon 未重启，可用 `codex app-server daemon version` 查看状态。`restart` 只重启现有守护进程（没有在运行的 daemon 时会安装并启动一个），不更换 daemon 已固定的包版本；需要换版本时用 `codex app-server daemon update --from-cli`。
 - `jq is missing`：在没有 `apt-get` 或没有 root/`sudo` 的环境中，先手动安装 `jq`。
 - `invalid model catalog fragment`：检查对应 JSON 是否合法，且顶层存在 `models` 数组，数组中每个条目都有非空字符串 `slug`。
@@ -175,7 +173,6 @@ jq -r '.models[].slug' "$HOME/.codex/models.json"
 
 ```bash
 bash -n install.sh
-bash -n install-codex.sh
 jq -e '.models | type == "array" and all(.[]; (.slug | type) == "string" and (.slug | length) > 0)' models/*.json
 git diff --check
 ```
