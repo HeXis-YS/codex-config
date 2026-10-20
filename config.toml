@@ -24,7 +24,3 @@ name = "__PROVIDER_NAME__"
 base_url = "__PROVIDER_BASE_URL__"
 experimental_bearer_token = "__PROVIDER_TOKEN__"
 supports_standalone_web_search = true
-
-[agents]
-enabled = true
-max_concurrent_threads_per_session = 8
