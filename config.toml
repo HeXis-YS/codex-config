@@ -8,8 +8,6 @@ sandbox_mode = "danger-full-access"
 mcp_oauth_credentials_store = "file"
 
 model_provider = "custom"
-model_context_window = 272000
-model_auto_compact_token_limit = 240000
 web_search = "live"
 model_catalog_json = "~/.codex/models.json"
 
