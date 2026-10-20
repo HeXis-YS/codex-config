@@ -9,14 +9,14 @@
 | [`AGENTS.md`](AGENTS.md) | 本仓库的项目级开发规则，用于约束可分发配置、规则和技能的编写与审查；不会被安装。 |
 | [`config.toml`](config.toml) | 唯一的 Codex 全局配置：网页搜索开关、Memory、长上下文和多 Agent 设置。`[model_providers.custom]` 是带占位符的 provider 模板，由 `install.sh` 按所选 profile 替换其中的 `name`、`base_url` 和 bearer token。 |
 | [`AGENTS.global.md`](AGENTS.global.md) | 全局 Agent 规则的仓库源文件；安装时复制为 `~/.codex/AGENTS.md`。文件名带有 `.global`，使它不会在本仓库中作为项目级指令与 `AGENTS.md` 同时加载。 |
-| [`models/`](models/) | 自定义模型目录。每个 JSON 文件都是一个 `{ "models": [...] }` 模型目录片段；安装时按所选 profile 把对应的一份安装为 `~/.codex/models.json`（默认 `deepseek.json`）。`glm.json` 不单独安装，只作为 `higress.json` 中 GLM 条目的来源；`openlux` 没有对应的文件，它的模型列表在安装时从 Codex CLI 现取。 |
+| [`models/`](models/) | 自定义模型目录。每个 JSON 文件都是一个 `{ "models": [...] }` 模型目录片段；安装时按所选 profile 把对应的一份安装为 `~/.codex/models.json`（默认 `deepseek.json`）。`glm.json` 不单独安装，只作为 `highgo.json` 中 GLM 条目的来源；`openlux` 没有对应的文件，它的模型列表在安装时从 Codex CLI 现取。 |
 | [`install.sh`](install.sh) | 将配置、全局规则、个人技能和模型目录安装到当前用户环境，并清理本仓库不再分发的旧 skill。 |
 | [`install-codex.sh`](install-codex.sh) | 以非交互方式安装 Codex CLI；是 `install.sh` 的前置步骤，不安装本仓库的配置。只要环境里有 `npm`，就先执行 `npm uninstall --global @openai/codex` 再安装 standalone 版（不判断当前 `codex` 是否来自 npm；该包未安装时 npm 以 `up to date` 正常退出，卸载失败只打印警告并继续安装）。`install.sh` 会把它复制为 `~/.local/bin/update-codex`，之后用该命令刷新 CLI。 |
 | [`skills/`](skills/) | 随仓库版本化的个人技能；安装脚本会安装其中的全部 skill。 |
 | ELI5 | 外部 Codex 技能；安装脚本会从 GitHub 克隆并安装到 `~/.codex/skills/eli5`。 |
 | [`.gitignore`](.gitignore) | 忽略本地认证文件 `auth.json`。 |
 
-仓库会把 `custom` provider 的 bearer token 写进 `install.sh` 里各 profile 的 `experimental_bearer_token`（higress 用的是占位值 `sbx-cs-higress`），不再依赖环境变量；因此本仓库自身包含凭据，应作为私密仓库对待，不要公开分发或推送到公共远端。其余登录状态（`auth.json`）仍只保存在本机。
+仓库会把 `custom` provider 的 bearer token 写进 `install.sh` 里各 profile 的 `experimental_bearer_token`（highgo 用的是占位值 `sbx-cs-highgo`），不再依赖环境变量；因此本仓库自身包含凭据，应作为私密仓库对待，不要公开分发或推送到公共远端。其余登录状态（`auth.json`）仍只保存在本机。
 
 ## 快速安装
 
@@ -29,7 +29,7 @@ cd codex-config
 ./install.sh
 ```
 
-仓库只维护一份配置。安装时 `install.sh` 把 `config.toml` 里 `[model_providers.custom]` 模板的 `name`、`base_url` 和 bearer token 替换为所选后端的取值，并安装对应 profile 的模型列表。`--profile <name>` 可选 `deepseek`（默认，指向 `https://api.deepseek.com/`）、`higress`（指向 `http://host.docker.internal:8080/v1/`，token 为占位值 `sbx-cs-higress`）或 `openlux`（指向 `https://api.openlux.ai/v1/`）。三种情况下 provider id 都是 `custom`，既有的会话记录不会失效。
+仓库只维护一份配置。安装时 `install.sh` 把 `config.toml` 里 `[model_providers.custom]` 模板的 `name`、`base_url` 和 bearer token 替换为所选后端的取值，并安装对应 profile 的模型列表。`--profile <name>` 可选 `deepseek`（默认，指向 `https://api.deepseek.com/`）、`highgo`（指向 `http://host.docker.internal:8080/v1/`，token 为占位值 `sbx-cs-highgo`）或 `openlux`（指向 `https://api.openlux.ai/v1/`）。三种情况下 provider id 都是 `custom`，既有的会话记录不会失效。
 
 脚本使用当前用户的 `HOME`，安装结果位于：
 
@@ -76,7 +76,7 @@ git config --global user.name "HeXis-YS"
 4. 克隆 ELI5 仓库并将 `skills/eli5` 安装到 `~/.codex/skills/eli5`。
 5. 配置文件和模型目录都先写到目标目录内的临时文件再替换，避免中断时留下不完整文件。
 6. 将 `.codex` 写入 `~/.config/git/ignore`。
-7. 由 [`config.toml`](config.toml) 模板生成 `~/.codex/config.toml`，并把 `[model_providers.custom]` 的三个占位符替换为所选后端的 `name`、`base_url` 和 bearer token；并在安装前校验 `<name>` 属于 `deepseek`、`higress`、`openlux`，其他取值或源文件缺少模板占位符时直接报错。脚本同时删除早期版本安装的 `~/.codex/higress.config.toml`、`~/.codex/gateway.config.toml`、`~/.codex/models.gateway.json` 和 `~/.codex/models.higress.json`。
+7. 由 [`config.toml`](config.toml) 模板生成 `~/.codex/config.toml`，并把 `[model_providers.custom]` 的三个占位符替换为所选后端的 `name`、`base_url` 和 bearer token；并在安装前校验 `<name>` 属于 `deepseek`、`highgo`、`openlux`，其他取值或源文件缺少模板占位符时直接报错。脚本同时删除早期版本安装的 `~/.codex/higress.config.toml`、`~/.codex/gateway.config.toml`、`~/.codex/models.gateway.json` 和 `~/.codex/models.higress.json`。
 8. 把 `install-codex.sh` 安装为 `~/.local/bin/update-codex`（0755），用于之后非交互刷新 CLI。
 
 > 如果检测到旧的 `~/.agents/skills/`，脚本会将本仓库管理的技能和 ELI5 迁移到 `~/.codex/skills/`；其他未管理的技能不会被删除。
@@ -112,15 +112,15 @@ jq -r '.models[].slug' "$HOME/.codex/models.json"
 | 模型列表 | 对应 profile 与端点 | 模型 |
 | --- | --- | --- |
 | `models/deepseek.json` | 默认（`custom` 指向 `https://api.deepseek.com/`） | `deepseek-flash`、`deepseek-v4-pro` |
-| `models/higress.json` | `--profile higress`（`custom` 指向 `http://host.docker.internal:8080/v1/`） | `deepseek-v4.1-flash`、`deepseek-v4-pro`、`ccs-higress/ZHIPU/GLM-5.3-Flash`、`ccs-higress/glm-5.3` |
+| `models/highgo.json` | `--profile highgo`（`custom` 指向 `http://host.docker.internal:8080/v1/`） | `deepseek-v4.1-flash`、`deepseek-v4-pro`、`ccs-higress/ZHIPU/GLM-5.3-Flash`、`ccs-higress/glm-5.3` |
 | `openlux`（仓库中无文件，安装时生成） | `--profile openlux`（`custom` 指向 `https://api.openlux.ai/v1/`） | 安装时执行 `codex debug models --bundled`；当前 CLI 0.162.0 返回 11 个官方模型：`gpt-6.1-sol`、`gpt-6-astra`、`gpt-6-sol`、`gpt-6-luna`、`gpt-5.6-sol`、`gpt-5.6-terra`、`gpt-5.6-luna`、`gpt-5.5`、`gpt-daybreak-blue-latest`、`gpt-daybreak-red-latest`、`codex-auto-review` |
 
-配置里不写 `model` 与 `model_reasoning_effort`：默认模型随所装的模型列表变化，取其中 `priority` 最小的条目（`deepseek.json` → `deepseek-flash`，`higress.json` → `deepseek-v4.1-flash`，`openlux.json` → `gpt-6.1-sol`）。所以端点和模型列表必须成套更换，`--profile` 做的正是这件事。
+配置里不写 `model` 与 `model_reasoning_effort`：默认模型随所装的模型列表变化，取其中 `priority` 最小的条目（`deepseek.json` → `deepseek-flash`，`highgo.json` → `deepseek-v4.1-flash`，`openlux.json` → `gpt-6.1-sol`）。所以端点和模型列表必须成套更换，`--profile` 做的正是这件事。
 
-该端点的 `/v1/models` 返回 4 个 slug，但其中大量字段由网关自行填充，不能直接作为模型目录。`models/higress.json` 因此由仓库中的 `models/deepseek.json` 与 `models/glm.json` 组合而成：只把 slug 改成网关实际接受的名字（`deepseek-flash`→`deepseek-v4.1-flash`、`glm-5.3-flash`→`ccs-higress/ZHIPU/GLM-5.3-Flash`、`glm-5.3`→`ccs-higress/glm-5.3`），并把 `priority` 重排为 1–4，其余字段与源文件逐字段一致。四个 slug 在 `/v1/responses` 上均返回 200；`deepseek-flash` 与 `glm-5.3-flash` 直连该端点会 404，GLM 必须带 `ccs-higress/` 前缀（`ZHIPU/GLM-5.3-Flash` 会 400）。该端点不校验鉴权，无 `Authorization` 头也返回 200，因此 `[model_providers.custom]` 不声明 `env_key`（声明后 Codex 会因缺少环境变量而拒绝启动），token 只登记占位值 `sbx-cs-higress`，不代表真实权限。切到该后端：
+该端点的 `/v1/models` 返回 4 个 slug，但其中大量字段由网关自行填充，不能直接作为模型目录。`models/highgo.json` 因此由仓库中的 `models/deepseek.json` 与 `models/glm.json` 组合而成：只把 slug 改成网关实际接受的名字（`deepseek-flash`→`deepseek-v4.1-flash`、`glm-5.3-flash`→`ccs-higress/ZHIPU/GLM-5.3-Flash`、`glm-5.3`→`ccs-higress/glm-5.3`），并把 `priority` 重排为 1–4，其余字段与源文件逐字段一致。四个 slug 在 `/v1/responses` 上均返回 200；`deepseek-flash` 与 `glm-5.3-flash` 直连该端点会 404，GLM 必须带 `ccs-higress/` 前缀（`ZHIPU/GLM-5.3-Flash` 会 400）。该端点不校验鉴权，无 `Authorization` 头也返回 200，因此 `[model_providers.custom]` 不声明 `env_key`（声明后 Codex 会因缺少环境变量而拒绝启动），token 只登记占位值 `sbx-cs-highgo`，不代表真实权限。切到该后端：
 
 ```bash
-./install.sh --profile higress
+./install.sh --profile highgo
 ```
 
 `models/glm.json` 仍保留在仓库中，但安装脚本不会安装其中的 Z.ai 模型。`openlux` profile 在仓库里没有模型文件：每次安装都用 `codex debug models --bundled` 从当前 CLI 读取官方目录，所以不存在快照过期的问题，模型清单始终与安装的 CLI 版本一致。清单是 CLI 自带目录原样，不是 OpenLux 端点自报的模型；`https://api.openlux.ai/v1/models` 与 `/v1/responses` 在沙箱内用仓库里的 key 请求都返回 401（`Invalid token`），所以这个 profile 的端到端可用性还没有实测证据。
@@ -147,7 +147,7 @@ jq -r '.models[].slug' "$HOME/.codex/models.json"
 
 实际模型条目通常还需要完整的上下文窗口、推理等级、工具能力和服务端兼容性字段；可参考 [`models/deepseek.json`](models/deepseek.json)。每个 `slug` 应唯一；安装脚本读取 `catalog_sources` 中列出的模型文件。
 
-迁移到新环境的最小流程是：安装 Codex CLI、完成认证、克隆本仓库、运行安装脚本。模型服务地址由 `--profile` 决定，端点数据在 [`install.sh`](install.sh)：默认指向 `https://api.deepseek.com/`，bearer token 写死在 deepseek 的 profile 字段；`--profile higress` 指向 `http://host.docker.internal:8080/v1/`，该端点不鉴权，token 写占位值 `sbx-cs-higress`；`--profile openlux` 指向 `https://api.openlux.ai/v1/`，bearer token 写在 openlux 的 profile 字段，模型清单在安装时从 CLI 现取。目标环境必须能够访问所选端点的服务。技能安装到 `~/.codex/skills/`，由 Codex 从该目录发现。
+迁移到新环境的最小流程是：安装 Codex CLI、完成认证、克隆本仓库、运行安装脚本。模型服务地址由 `--profile` 决定，端点数据在 [`install.sh`](install.sh)：默认指向 `https://api.deepseek.com/`，bearer token 写死在 deepseek 的 profile 字段；`--profile highgo` 指向 `http://host.docker.internal:8080/v1/`，该端点不鉴权，token 写占位值 `sbx-cs-highgo`；`--profile openlux` 指向 `https://api.openlux.ai/v1/`，bearer token 写在 openlux 的 profile 字段，模型清单在安装时从 CLI 现取。目标环境必须能够访问所选端点的服务。技能安装到 `~/.codex/skills/`，由 Codex 从该目录发现。
 
 ## 配置要点与安全边界
 
@@ -160,7 +160,7 @@ jq -r '.models[].slug' "$HOME/.codex/models.json"
 
 这适合个人信任的开发容器或隔离环境，不适合直接用于不受信任的代码、生产主机或含敏感数据的工作区。若环境风险不同，应先调整 `config.toml`，再运行安装脚本。
 
-`auth.json` 仅保留在本机，不要强制添加。`install.sh` 现在把 `custom` provider 的 bearer token 写死在三个 profile 的 `experimental_bearer_token` 并随仓库提交；其中 higress 的 `sbx-cs-higress` 是占位值、不是可用凭据，真实凭据是 deepseek 与 openlux 两个，因此本仓库含有两个凭据，应按私密仓库处理，不要公开分发或推送到公共远端；token 轮换或泄露时更新对应字段。除此之外不要把其他 API 密钥写入模型 JSON 或 Git 历史。
+`auth.json` 仅保留在本机，不要强制添加。`install.sh` 现在把 `custom` provider 的 bearer token 写死在三个 profile 的 `experimental_bearer_token` 并随仓库提交；其中 highgo 的 `sbx-cs-highgo` 是占位值、不是可用凭据，真实凭据是 deepseek 与 openlux 两个，因此本仓库含有两个凭据，应按私密仓库处理，不要公开分发或推送到公共远端；token 轮换或泄露时更新对应字段。除此之外不要把其他 API 密钥写入模型 JSON 或 Git 历史。
 
 ## 故障排查
 
