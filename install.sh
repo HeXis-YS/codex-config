@@ -287,3 +287,12 @@ printf 'Installed Codex configuration to %s\n' "$codex_dir"
 printf 'Installed %s models from profile %s to %s\n' \
     "$(jq '.models | length' "$catalog_target")" "$profile_name" "$catalog_target"
 printf 'Installed ELI5 skill to %s\n' "$eli5_install_dir"
+
+# The daemon is a separate process that reads the configuration when it starts,
+# so restart it once the install above is complete to make it load the installed
+# config.toml and models.json. Nothing downstream depends on the daemon, so a
+# daemon that cannot restart only warns.
+printf 'Restarting the app-server daemon\n'
+if ! codex app-server daemon restart; then
+    printf 'install.sh: warning: could not restart the app-server daemon; the installed configuration is unaffected\n' >&2
+fi

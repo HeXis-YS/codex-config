@@ -31,6 +31,14 @@ curl -fsSL "$installer_url" | CODEX_NON_INTERACTIVE=1 sh
 
 if command -v codex >/dev/null 2>&1; then
     printf 'Codex CLI installed: %s\n' "$(command -v codex)"
+    # The daemon is a separate process from the CLI and stays up while the CLI is
+    # replaced, so restart it to bring it back up next to the freshly installed
+    # CLI (without a running daemon the command installs and starts one). Nothing
+    # downstream needs the daemon, so a daemon that cannot restart only warns.
+    printf 'Restarting the app-server daemon\n'
+    if ! codex app-server daemon restart; then
+        printf '%s: warning: could not restart the app-server daemon; the installed CLI is unaffected\n' "$script_name" >&2
+    fi
 else
     printf '%s: the installer finished, but codex is not on PATH in this shell; open a new shell before running ./install.sh\n' "$script_name" >&2
 fi
