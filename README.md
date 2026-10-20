@@ -9,7 +9,7 @@
 | [`AGENTS.md`](AGENTS.md) | 本仓库的项目级开发规则，用于约束可分发配置、规则和技能的编写与审查；不会被安装。 |
 | [`config.toml`](config.toml) | 唯一的 Codex 全局配置：网页搜索开关、Memory、长上下文和多 Agent 设置。`[model_providers.custom]` 是带占位符的 provider 模板，由 `install.sh` 按所选 profile 替换其中的 `name`、`base_url` 和 bearer token。 |
 | [`AGENTS.global.md`](AGENTS.global.md) | 全局 Agent 规则的仓库源文件；安装时复制为 `~/.codex/AGENTS.md`。文件名带有 `.global`，使它不会在本仓库中作为项目级指令与 `AGENTS.md` 同时加载。 |
-| [`models/`](models/) | 自定义模型目录。每个 JSON 文件都是一个 `{ "models": [...] }` 模型目录片段；安装时按所选 profile 把对应的一份安装为 `~/.codex/models.json`（默认 `deepseek.json`）。`glm.json` 不单独安装，保留 Z.ai GLM 的一版目录片段；`openlux` 没有对应的文件，它的模型列表在安装时从 Codex CLI 现取。 |
+| [`models/`](models/) | 自定义模型目录。每个 JSON 文件都是一个 `{ "models": [...] }` 模型目录片段；安装时按所选 profile 把对应的一份安装为 `~/.codex/models.json`（默认 `deepseek.json`）；`openlux` 没有对应的文件，它的模型列表在安装时从 Codex CLI 现取。 |
 | [`install.sh`](install.sh) | 将配置、全局规则、个人技能和模型目录安装到当前用户环境，并清理本仓库不再分发的旧 skill。 |
 | [`install-codex.sh`](install-codex.sh) | 以非交互方式安装 Codex CLI；是 `install.sh` 的前置步骤，不安装本仓库的配置。只要环境里有 `npm`，就先执行 `npm uninstall --global @openai/codex` 再安装 standalone 版（不判断当前 `codex` 是否来自 npm；该包未安装时 npm 以 `up to date` 正常退出，卸载失败只打印警告并继续安装）。`install.sh` 会把它复制为 `~/.local/bin/update-codex`，之后用该命令刷新 CLI。 |
 | [`skills/`](skills/) | 随仓库版本化的个人技能；安装脚本会安装其中的全部 skill。 |
@@ -123,7 +123,7 @@ jq -r '.models[].slug' "$HOME/.codex/models.json"
 ./install.sh --profile highgo
 ```
 
-`models/glm.json` 仍保留在仓库中，但安装脚本不会安装其中的 Z.ai 模型。`openlux` profile 在仓库里没有模型文件：每次安装都用 `codex debug models --bundled` 从当前 CLI 读取官方目录，所以不存在快照过期的问题，模型清单始终与安装的 CLI 版本一致。清单是 CLI 自带目录原样，不是 OpenLux 端点自报的模型；`https://api.openlux.ai/v1/models` 与 `/v1/responses` 在沙箱内用仓库里的 key 请求都返回 401（`Invalid token`），所以这个 profile 的端到端可用性还没有实测证据。
+`openlux` profile 在仓库里没有模型文件：每次安装都用 `codex debug models --bundled` 从当前 CLI 读取官方目录，所以不存在快照过期的问题，模型清单始终与安装的 CLI 版本一致。清单是 CLI 自带目录原样，不是 OpenLux 端点自报的模型；`https://api.openlux.ai/v1/models` 与 `/v1/responses` 在沙箱内用仓库里的 key 请求都返回 401（`Invalid token`），所以这个 profile 的端到端可用性还没有实测证据。
 
 ## 日常迭代与迁移
 
