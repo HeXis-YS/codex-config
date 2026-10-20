@@ -8,6 +8,7 @@
 | --- | --- | --- |
 | `tool_mode` | `direct` | `code_mode_only` 只适用于 OpenAI 兼容 API。DeepSeek 端点不接受它，模型只剩 `apply_patch` 可用，`exec` 等工具无法调用；cc-switch 网关会掩盖上游拒绝，只有运行时才暴露。 |
 | `use_responses_lite` | `false` | 置为 `true` 时 DeepSeek 把工具调用按文本返回（DSML 形态），客户端不执行工具，退出码仍是 0。 |
+| `shell_type` | `shell_command` | 该字段决定客户端提供哪种 shell 工具形态。有 agent 报告在 `unified_exec` 下无法使用 `apply_patch`；用同一模型和临时 `CODEX_HOME` 做的 A/B 在两种取值下都能通过 patch 写入文件，未能复现差异，因此当前按恢复先前可用值处理，机制尚未确认。 |
 | `include_skills_usage_instructions`、`include_plugin_usage_instructions`、`include_apps_usage_instructions` | `true` | 非 GPT 模型没有针对 Codex 环境调优，开启后才会收到技能、插件与应用的用法说明。 |
 
 `tool_mode: direct` 与 `use_responses_lite: false` 必须同时成立，任一不满足都会让 DeepSeek 的工具调用失效，因此两者分成两个提交以便按因果回滚：`d725553`（`tool_mode`）与 `3abd9cb`（`use_responses_lite`，2026-10-20）。

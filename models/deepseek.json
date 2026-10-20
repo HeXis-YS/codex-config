@@ -19,7 +19,7 @@
                     "description": "Maximum reasoning depth for the hardest problems"
                 }
             ],
-            "shell_type": "unified_exec",
+            "shell_type": "shell_command",
             "visibility": "list",
             "supported_in_api": true,
             "priority": 1,
