@@ -9,7 +9,7 @@
 | [`AGENTS.md`](AGENTS.md) | 本仓库的项目级开发规则，用于约束可分发配置、规则和技能的编写与审查；不会被安装。 |
 | [`config.toml`](config.toml) | 唯一的 Codex 全局配置：网页搜索开关、Memory、多 Agent 设置和模型目录指向；模型上下文窗口取自模型目录条目。`[model_providers.custom]` 是带占位符的 provider 模板，由 `install.sh` 按所选 profile 替换其中的 `name`、`base_url` 和 bearer token。 |
 | [`AGENTS.global.md`](AGENTS.global.md) | 全局 Agent 规则的仓库源文件；安装时复制为 `~/.codex/AGENTS.md`。文件名带有 `.global`，使它不会在本仓库中作为项目级指令与 `AGENTS.md` 同时加载。 |
-| [`models/`](models/) | 自定义模型目录。每个 JSON 文件都是一个 `{ "models": [...] }` 模型目录片段；安装时按所选 profile 把对应的一份安装为 `~/.codex/models.json`（默认 `deepseek.json`）；`openlux` 没有对应的文件，它的模型列表在安装时从 Codex CLI 现取。 |
+| [`models/`](models/) | 自定义模型目录。每个 JSON 文件都是一个 `{ "models": [...] }` 模型目录片段；安装时按所选 profile 把对应的一份安装为 `~/.codex/models.json`（默认 `deepseek.json`）；`openlux` 没有对应的文件，它的模型列表在安装时从 Codex CLI 现取。字段兼容性与验证方法见 [`models/README.md`](models/README.md)。 |
 | [`install.sh`](install.sh) | 将配置、全局规则、个人技能和模型目录安装到当前用户环境，并清理本仓库不再分发的旧 skill。 |
 | [`install-codex.sh`](install-codex.sh) | 以非交互方式安装 Codex CLI；是 `install.sh` 的前置步骤，不安装本仓库的配置。只要环境里有 `npm`，就先执行 `npm uninstall --global @openai/codex` 再安装 standalone 版（不判断当前 `codex` 是否来自 npm；该包未安装时 npm 以 `up to date` 正常退出，卸载失败只打印警告并继续安装）。安装成功后重启本地 app-server daemon；无法重启时只打印警告。`install.sh` 会把它复制为 `~/.local/bin/update-codex`，之后用该命令刷新 CLI。 |
 | [`skills/`](skills/) | 随仓库版本化的个人技能；安装脚本会安装其中的全部 skill。 |
@@ -146,7 +146,7 @@ jq -r '.models[].slug' "$HOME/.codex/models.json"
 }
 ```
 
-实际模型条目通常还需要完整的上下文窗口、推理等级、工具能力和服务端兼容性字段；可参考 [`models/deepseek.json`](models/deepseek.json)。每个 `slug` 应唯一；安装脚本按所选 profile 读取对应的 `models/<profile>.json`。
+实际模型条目通常还需要完整的上下文窗口、推理等级、工具能力和服务端兼容性字段；可参考 [`models/deepseek.json`](models/deepseek.json)。每个 `slug` 应唯一；安装脚本按所选 profile 读取对应的 `models/<profile>.json`。字段兼容性约束与验证方法见 [`models/README.md`](models/README.md)。
 
 迁移到新环境的最小流程是：安装 Codex CLI、完成认证、克隆本仓库、运行安装脚本。模型服务地址由 `--profile` 决定，端点数据在 [`install.sh`](install.sh)：默认指向 `https://api.deepseek.com/`，bearer token 写死在 deepseek 的 profile 字段；`--profile highgo` 指向 `http://host.docker.internal:8080/v1/`，该端点不鉴权，token 写占位值 `sbx-cs-highgo`；`--profile openlux` 指向 `https://api.openlux.ai/v1/`，bearer token 写在 openlux 的 profile 字段，模型清单在安装时从 CLI 现取。目标环境必须能够访问所选端点的服务。技能安装到 `~/.codex/skills/`，由 Codex 从该目录发现。
 
