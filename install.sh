@@ -104,6 +104,11 @@ set_custom_provider() {
         die 'the installed config.toml still contains a provider placeholder'
     fi
     mv -f "$codex_dir/.config.toml.staged" "$codex_dir/config.toml"
+    # Install proxy-setup.cjs for MCP servers that need proxy support
+    if [ -f "$script_dir/proxy-setup.cjs" ]; then
+        install -m 0644 "$script_dir/proxy-setup.cjs" "$codex_dir/proxy-setup.cjs" \
+            || die "failed to install proxy-setup.cjs in $codex_dir"
+    fi
 }
 # Check codex before attempting any package-manager operation.
 command_exists codex || die 'codex command was not found; install Codex CLI and retry.'
