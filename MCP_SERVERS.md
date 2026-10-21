@@ -83,3 +83,30 @@ node -e "console.log(require.resolve('undici'))"
 ```bash
 npm install -g undici
 ```
+
+## proxy-setup.cjs 实现细节
+
+`proxy-setup.cjs` 是一个轻量级的 Node.js 代理配置脚本，通过 `NODE_OPTIONS` 注入到 MCP 服务器进程中。
+
+**工作原理**：
+1. 检查环境变量 `HTTP_PROXY` 或 `HTTPS_PROXY` 是否存在
+2. 如果存在，使用 `undici` 的 `EnvHttpProxyAgent` 设置全局 HTTP(S) 调度器
+3. 所有通过 `undici` 或 Node.js `fetch` API 的请求自动走代理
+
+**源码**：
+```javascript
+// Only set up proxy if HTTP_PROXY or HTTPS_PROXY environment variables are present
+if (process.env.HTTP_PROXY || process.env.HTTPS_PROXY) {
+  const { EnvHttpProxyAgent, setGlobalDispatcher } = require('undici');
+  setGlobalDispatcher(new EnvHttpProxyAgent());
+}
+```
+
+**部署位置**：
+- 仓库源文件：`proxy-setup.cjs`
+- 安装目标：`~/.codex/proxy-setup.cjs`
+- 部署脚本：`install.sh` 中的 `set_custom_provider` 函数
+
+**依赖**：
+- `undici` 包（Node.js 18+ 内置，或通过系统包管理器安装）
+- 环境变量：`HTTP_PROXY`、`HTTPS_PROXY`、`NO_PROXY`
