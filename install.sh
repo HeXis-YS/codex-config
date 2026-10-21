@@ -38,7 +38,7 @@ usage() {
     printf '  Installs config.toml, global rules, skills, and the model list of the\n' >&2
     printf '  selected profile as ~/.codex/models.json. --profile <name> also points\n' >&2
     printf '  the custom provider of the installed config at that backend.\n' >&2
-    printf '  Profiles: deepseek (default), highgo, openlux.\n' >&2
+    printf '  Profiles: deepseek (default), highgo, openlux, cc-switch.\n' >&2
 }
 
 parse_args() {
@@ -67,15 +67,15 @@ parse_args() {
 
 parse_args "$@"
 case "$selected_profile" in
-    ""|deepseek|highgo|openlux) ;;
-    *) die "unknown profile: $selected_profile (expected deepseek, highgo, or openlux)" ;;
+    ""|deepseek|highgo|openlux|cc-switch) ;;
+    *) die "unknown profile: $selected_profile (expected deepseek, highgo, openlux, or cc-switch)" ;;
 esac
 
 # Generate the installed config from the repository template, filling the three
 # provider fields of the selected backend; the result is staged beside its
-# destination so an interrupted install cannot leave a partial file. highgo
-# serves an endpoint that ignores credentials, so its token is a placeholder:
-# Codex refuses to start when the declared token is empty.
+# destination so an interrupted install cannot leave a partial file. The local
+# highgo and cc-switch gateways use placeholder tokens because Codex refuses to
+# start when the declared token is empty.
 set_custom_provider() {
     local provider_name provider_base_url provider_token
     if [ "$selected_profile" = highgo ]; then
@@ -86,6 +86,10 @@ set_custom_provider() {
         provider_name='OpenLux'
         provider_base_url='https://api.openlux.ai/v1/'
         provider_token='sbx-cs-openlux'
+    elif [ "$selected_profile" = cc-switch ]; then
+        provider_name='CC Switch'
+        provider_base_url='http://host.docker.internal:15721/v1/'
+        provider_token='sbx-cs-cc-switch'
     else
         provider_name='DeepSeek'
         provider_base_url='https://api.deepseek.com/'

@@ -32,3 +32,4 @@ env HOME="$t_home" CODEX_HOME="$t_home/.codex" codex exec --skip-git-repo-check 
 
 - `models/highgo.json` 的两个条目目前只有字段一致性维护，没有端到端证据：`--profile highgo` 安装正常，但 `codex exec` 在 `use_responses_lite` 开或关时都失败，cc-switch 对 `deepseek-v4.1-flash` 的 `/responses` 返回 404。
 - GLM 条目此前记录到 cc-switch 400 与上游 401/403，同样没有可用证据；端点恢复后需要重跑上面的验证。
+- `models/cc-switch.json` 的 6 个条目中，默认模型 `gpt-6-luna` 已于 2026-10-21 用临时 `CODEX_HOME` 和 `--profile cc-switch` 验证，真实请求执行了 `echo tool-ok` 并返回对应输出；其他 5 个条目尚未逐一验证。端点当日稍后返回的 `/v1/models` 还列出 `ccs-deepseek/deepseek-v4-pro`，该条目未包含在当前预设中。
