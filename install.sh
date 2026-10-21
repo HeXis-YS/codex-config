@@ -124,7 +124,7 @@ legacy_skills_install_dir="$HOME/.agents/skills"
 skills_install_dir="$HOME/.codex/skills"
 eli5_repo_url="https://github.com/DreambigOu/ELI5.git"
 eli5_install_dir="$skills_install_dir/eli5"
-retired_skills=(analyze write-code use-git)
+retired_skills=(analyze write-code use-git write-lessons)
 
 # Keep the source outside Codex's discovery names so this repository does not load it twice.
 for source_file in config.toml AGENTS.global.md; do

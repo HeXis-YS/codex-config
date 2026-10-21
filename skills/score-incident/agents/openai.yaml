@@ -1,0 +1,7 @@
+interface:
+  display_name: "评分事故"
+  short_description: "按风险与影响双轴评分，并将结果追加到已记录的事故"
+  default_prompt: "使用 $score-incident 对指定的已记录事故进行双轴评分。"
+
+policy:
+  allow_implicit_invocation: false

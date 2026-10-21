@@ -1,0 +1,7 @@
+interface:
+  display_name: "记录事故"
+  short_description: "按用户提供的事实，将事故详情追加到 .codex/incidents.md"
+  default_prompt: "使用 $record-incident 将本次事故的客观事实追加到 .codex/incidents.md。"
+
+policy:
+  allow_implicit_invocation: false

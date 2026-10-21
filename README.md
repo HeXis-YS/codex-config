@@ -39,8 +39,10 @@ cd codex-config
 ~/.codex/models.json   <- models/<profile>.json 安装后的目录
 ~/.codex/skills/write-todo/
                          <- skills/write-todo/
-~/.codex/skills/write-lessons/
-                         <- skills/write-lessons/
+~/.codex/skills/record-incident/
+                         <- skills/record-incident/
+~/.codex/skills/score-incident/
+                         <- skills/score-incident/
 ~/.codex/skills/write-report/
                          <- skills/write-report/
 ~/.codex/skills/write-prompt/
@@ -69,7 +71,7 @@ git config --global user.name "HeXis-YS"
 `install.sh` 会先校验依赖，然后：
 
 1. 创建 `~/.codex`、`~/.config/git` 和技能安装目录。
-2. 安装 `config.toml`、全局规则和 `skills/` 下的全部 skill，并删除本仓库先前安装的 `analyze`、`write-code`、`use-git` skill 目录；其他 skill 不受影响。
+2. 安装 `config.toml`、全局规则和 `skills/` 下的全部 skill，并删除本仓库先前安装的 `analyze`、`write-code`、`use-git`、`write-lessons` skill 目录；其他 skill 不受影响。
 3. 校验 `models/<profile>.json` 并写入 `~/.codex/models.json`；`openlux` 除外，它在安装时执行 `codex debug models --bundled` 现取 CLI 自带的官方目录。两种情况都不读取 Z.ai 模型目录，也不进行合并。
 4. 克隆 ELI5 仓库并将 `skills/eli5` 安装到 `~/.codex/skills/eli5`。
 5. 配置文件和模型目录都先写到目标目录内的临时文件再替换，避免中断时留下不完整文件。
@@ -96,13 +98,15 @@ test ! -e "$HOME/.codex/models.higress.json"
 test -f "$HOME/.codex/AGENTS.md"
 cmp AGENTS.global.md "$HOME/.codex/AGENTS.md"
 test -f "$HOME/.codex/skills/write-todo/SKILL.md"
-test -f "$HOME/.codex/skills/write-lessons/SKILL.md"
+test -f "$HOME/.codex/skills/record-incident/SKILL.md"
+test -f "$HOME/.codex/skills/score-incident/SKILL.md"
 test -f "$HOME/.codex/skills/write-report/SKILL.md"
 test -f "$HOME/.codex/skills/write-prompt/SKILL.md"
 test -f "$HOME/.codex/skills/eli5/SKILL.md"
 test ! -e "$HOME/.codex/skills/analyze" && test ! -L "$HOME/.codex/skills/analyze"
 test ! -e "$HOME/.codex/skills/write-code" && test ! -L "$HOME/.codex/skills/write-code"
 test ! -e "$HOME/.codex/skills/use-git" && test ! -L "$HOME/.codex/skills/use-git"
+test ! -e "$HOME/.codex/skills/write-lessons" && test ! -L "$HOME/.codex/skills/write-lessons"
 jq -r '.models[].slug' "$HOME/.codex/models.json"
 ```
 

@@ -174,7 +174,7 @@
 - 只有用户有权清理其中的内容
 
 **恢复流程**：
-- 新会话、上下文恢复或接手 Agent 必须先读取 `.codex/todo.md` 和 `.codex/lessons.md`
+- 新会话、上下文恢复或接手 Agent 必须先读取 `.codex/todo.md` 和 `.codex/incidents.md`
 - 与用户最新指令、Git 状态、文件内容、运行记录及仍在执行的进程核对
 - 观察事实优先于 todo，todo 优先于 Memory
 - 根据剩余工作重建或更新 Plan，从 todo 的唯一下一动作继续
@@ -208,12 +208,12 @@
 
 ### 7.2 经验反馈
 
-**长期经验（lessons.md）**：
-- `.codex/lessons.md` 的写入或整理由用户明确调用 `$write-lessons` 时执行
+**事故记录与评分**：
+- 新事故由用户明确调用 `$record-incident` 时写入 `.codex/incidents.md`
+- 已有事故的评分由用户明确调用 `$score-incident` 时执行
 
 **失败路径记录**：
 - 实际尝试证明某条路径不可行时，立即使用 `$write-todo` 记录该路径、失败证据或原因、适用范围和允许重试的条件
-- 用户明确要求记录 lessons 时，按 `$write-lessons` skill 执行
 - 失败路径记录本身随已完成任务保留，供维护者追溯
 
 ## 8. 代码与工程标准
@@ -388,7 +388,7 @@
 
 ### 12.1 启动检查
 
-- 启动任务时按 §6.3 的恢复流程核对 `.codex/lessons.md` 和现有 `.codex/todo.md`
+- 启动任务时按 §6.3 的恢复流程核对 `.codex/incidents.md` 和现有 `.codex/todo.md`
 - 若存在已完成任务，保留其记录并另起新任务条目，以便了解此前发生了什么
 
 ### 12.2 完成标准
