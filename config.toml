@@ -21,3 +21,26 @@ name = "__PROVIDER_NAME__"
 base_url = "__PROVIDER_BASE_URL__"
 experimental_bearer_token = "__PROVIDER_TOKEN__"
 supports_standalone_web_search = true
+
+# MCP server proxy configuration (for Node.js-based MCP servers):
+# If MCP servers need to access external APIs through a proxy, add NODE_OPTIONS to their env section.
+# Example:
+#
+# [mcp_servers.example_server]
+# command = "npx"
+# args = ["-y", "example-mcp-package"]
+# [mcp_servers.example_server.env]
+# NODE_OPTIONS = "--require /home/agent/.codex/proxy-setup.cjs"
+# API_KEY = "your-api-key"
+#
+# For non-Node.js MCP servers, use standard HTTP_PROXY/HTTPS_PROXY environment variables if supported.
+
+# ds-websearch-mcp: Web search capability for models without native search
+# Provides web_search tool using DeepSeek's search API
+[mcp_servers.ds-websearch-mcp]
+command = "npx"
+args = ["-y", "ds-websearch-mcp"]
+
+[mcp_servers.ds-websearch-mcp.env]
+DEEPSEEK_API_KEY = "sbx-cs-deepseek"
+NODE_OPTIONS = "--require /home/agent/.codex/proxy-setup.cjs"
