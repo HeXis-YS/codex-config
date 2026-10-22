@@ -40,6 +40,29 @@ NODE_OPTIONS = "--require /home/agent/.codex/proxy-setup.cjs"
 
 1. 在 `config.toml` 中添加配置：
 
+
+## 重要说明：代理环境变量自动注入
+
+⚠️ **MCP 服务器不会自动继承父进程的环境变量**
+
+`proxy-setup.cjs` 已更新为自动注入代理配置，解决了以下问题：
+- MCP 服务器进程启动时，即使父进程有 `HTTP_PROXY` 环境变量，子进程也可能收不到
+- 导致代理配置失效，Token 替换无法工作
+
+**当前实现**：
+```javascript
+// 如果环境变量未设置，自动注入默认代理配置
+if (!process.env.HTTP_PROXY && !process.env.HTTPS_PROXY) {
+  process.env.HTTP_PROXY = 'http://gateway.docker.internal:3128';
+  process.env.HTTPS_PROXY = 'http://gateway.docker.internal:3128';
+  process.env.NO_PROXY = 'localhost,127.0.0.1,::1,gateway.docker.internal';
+}
+```
+
+这意味着：
+- ✅ `config.toml` 中只需一行 `NODE_OPTIONS`，无需重复声明代理变量
+- ✅ 所有 Node.js MCP 服务器自动获得代理支持
+- ✅ 如果需要自定义代理，可以在 MCP 服务器的 `env` 节中覆盖
 ```toml
 [mcp_servers.your_server]
 command = "npx"
