@@ -6,6 +6,7 @@ import hashlib
 import os
 from pathlib import Path
 import platform
+import re
 import shutil
 import subprocess
 import sys
@@ -24,7 +25,15 @@ def main():
         choices=sorted(path.name for path in (root / "skills").iterdir() if path.is_dir()),
         help="Also compare every file in this installed skill; repeat for multiple skills.",
     )
+    parser.add_argument(
+        "--retired-skill", action="append", default=[], metavar="NAME",
+        help="Seed and verify removal of a retired skill from current and legacy paths; repeat as needed.",
+    )
     args = parser.parse_args()
+    retired_names = list(dict.fromkeys(args.retired_skill))
+    for name in retired_names:
+        if not re.fullmatch(r"[a-z0-9][a-z0-9-]*", name):
+            parser.error(f"Invalid retired skill name: {name}")
     skill_files = {}
     for name in dict.fromkeys(args.skill):
         source_dir = root / "skills" / name
@@ -42,7 +51,7 @@ def main():
         try:
             log.write(f"Environment: {platform.platform()}; Python {sys.version}\n")
             log.write(f"Entry: python3 scripts/verify-rules-install.py; profile: deepseek; "
-                      f"skills: {list(skill_files)}\n")
+                      f"skills: {list(skill_files)}; retired skills: {retired_names}\n")
             inputs = [Path(__file__).resolve(), root / "AGENTS.global.md",
                       root / "install.sh", root / "config.toml", root / "models/deepseek.json"]
             for name, paths in skill_files.items():
@@ -61,6 +70,21 @@ def main():
                 base = Path(temporary)
                 test_home = base / "home"
                 test_home.mkdir()
+                retired_paths = []
+                unmanaged_markers = []
+                if retired_names:
+                    for directory in (test_home / ".codex" / "skills", test_home / ".agents" / "skills"):
+                        directory.mkdir(parents=True)
+                        for name in retired_names:
+                            retired = directory / name
+                            retired.mkdir()
+                            (retired / "SKILL.md").write_text("Retired skill verification fixture\n")
+                            retired_paths.append(retired)
+                        unmanaged = Path(tempfile.mkdtemp(prefix="unmanaged-", dir=directory))
+                        marker = unmanaged / "SKILL.md"
+                        marker.write_bytes(b"Unmanaged skill must be preserved\n")
+                        unmanaged_markers.append(marker)
+                    log.write(f"Seeded retired skills in current and legacy paths: {retired_names}\n")
                 bin_dir = base / "bin"
                 bin_dir.mkdir()
                 stub = bin_dir / "codex"
@@ -98,6 +122,14 @@ def main():
                         if (installed_dir / path).read_bytes() != (source_dir / path).read_bytes():
                             raise RuntimeError(f"Installed skill file differs: {name}/{path}")
                     log.write(f"PASS: skill {name}, {len(paths)} files are byte-identical\n")
+                for path in retired_paths:
+                    if path.exists() or path.is_symlink():
+                        raise RuntimeError(f"Retired skill was not removed: {path.relative_to(test_home)}")
+                    log.write(f"PASS: retired skill removed: {path.relative_to(test_home)}\n")
+                for marker in unmanaged_markers:
+                    if marker.read_bytes() != b"Unmanaged skill must be preserved\n":
+                        raise RuntimeError(f"Unmanaged skill changed: {marker.relative_to(test_home)}")
+                    log.write(f"PASS: unmanaged skill preserved: {marker.relative_to(test_home)}\n")
             log.write("PASS: temporary installation removed\n")
         except Exception as error:
             log.write(f"FAIL: {error}\n")

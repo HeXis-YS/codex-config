@@ -46,8 +46,6 @@ cd codex-config
                          <- skills/record-incident/
 ~/.codex/skills/score-incident/
                          <- skills/score-incident/
-~/.codex/skills/write-report/
-                         <- skills/write-report/
 ~/.codex/skills/write-prompt/
                          <- skills/write-prompt/
 ~/.codex/skills/write-docs/
@@ -76,7 +74,7 @@ git config --global user.name "HeXis-YS"
 `install.sh` 会先校验依赖，然后：
 
 1. 创建 `~/.codex`、`~/.config/git` 和技能安装目录。
-2. 安装 `config.toml`、全局规则和 `skills/` 下的全部 skill，并删除本仓库先前安装的 `analyze`、`write-code`、`use-git`、`write-lessons` skill 目录；其他 skill 不受影响。
+2. 安装 `config.toml`、全局规则和 `skills/` 下的全部 skill，并删除本仓库先前安装的 `analyze`、`write-code`、`use-git`、`write-lessons`、`write-report` skill 目录；其他 skill 不受影响。
 3. 校验 `models/<profile>.json` 并写入 `~/.codex/models.json`；`openlux` 除外，它在安装时执行 `codex debug models --bundled` 现取 CLI 自带的官方目录。两种情况都不读取 Z.ai 模型目录，也不进行合并。
 4. 克隆 ELI5 仓库并将 `skills/eli5` 安装到 `~/.codex/skills/eli5`。
 5. 配置文件和模型目录都先写到目标目录内的临时文件再替换，避免中断时留下不完整文件。
@@ -105,7 +103,6 @@ cmp AGENTS.global.md "$HOME/.codex/AGENTS.md"
 test -f "$HOME/.codex/skills/write-todo/SKILL.md"
 test -f "$HOME/.codex/skills/record-incident/SKILL.md"
 test -f "$HOME/.codex/skills/score-incident/SKILL.md"
-test -f "$HOME/.codex/skills/write-report/SKILL.md"
 test -f "$HOME/.codex/skills/write-prompt/SKILL.md"
 test -f "$HOME/.codex/skills/write-docs/SKILL.md"
 test -f "$HOME/.codex/skills/eli5/SKILL.md"
@@ -113,6 +110,8 @@ test ! -e "$HOME/.codex/skills/analyze" && test ! -L "$HOME/.codex/skills/analyz
 test ! -e "$HOME/.codex/skills/write-code" && test ! -L "$HOME/.codex/skills/write-code"
 test ! -e "$HOME/.codex/skills/use-git" && test ! -L "$HOME/.codex/skills/use-git"
 test ! -e "$HOME/.codex/skills/write-lessons" && test ! -L "$HOME/.codex/skills/write-lessons"
+test ! -e "$HOME/.codex/skills/write-report" && test ! -L "$HOME/.codex/skills/write-report"
+test ! -e "$HOME/.agents/skills/write-report" && test ! -L "$HOME/.agents/skills/write-report"
 jq -r '.models[].slug' "$HOME/.codex/models.json"
 ```
 
@@ -151,7 +150,7 @@ jq -r '.models[].slug' "$HOME/.codex/models.json"
 
 [`write-docs`](skills/write-docs/SKILL.md) 用于中英文技术文档、注释、报告、规则说明和面向用户文字的撰写、翻译与审校。它共用语义保真和审校流程，按需读取中文、英文及文体参考；普通任务不会仅因有文字输出就自动启用。可以直接调用 `$write-docs`，例如“用中文改写这份安装指南”或“Review this English README for clarity”。
 
-技术报告的证据与分析仍由 `write-report` 负责，提示词的行为设计由 `write-prompt` 负责；`write-docs` 改善这些产物的语言与结构。能力组织、参考来源和验收边界见[设计依据](docs/write-docs-rationale.md)。
+技术报告统一使用 `write-docs`，例如“为这些提交编写阶段总结”。它按需读取[技术报告参考](skills/write-docs/references/technical-reports.md)，覆盖缺陷修复、性能变化和阶段总结的证据、数据条件及结论边界；默认在对话中输出 Markdown，指定文件时写入文件。提示词的行为设计由 `write-prompt` 负责。能力组织、参考来源和验收边界见[设计依据](docs/write-docs-rationale.md)。
 
 ### 模型与环境迁移
 
@@ -209,6 +208,8 @@ git diff --check
 python3 scripts/verify-rules-install.py
 # 核对全局规则与指定 skill
 python3 scripts/verify-rules-install.py --skill write-docs
+# 同时验证已退役 skill 的清理
+python3 scripts/verify-rules-install.py --skill write-docs --retired-skill write-report
 ```
 
-需要 Python 3、Bash、Git、jq、Codex 和访问 GitHub 的网络。入口固定以仓库根目录运行 `install.sh --profile deepseek`，仅为安装子进程设置隔离的用户目录和 Git 全局配置，并拦截 daemon 重启；运行后清理临时安装。它记录工具版本、代码版本、工作区差异指纹和原始输出到 `.codex/runs/rules-install-*.log`，核对安装后的 `AGENTS.md` 与仓库源文件逐字节一致。`--skill <名称>` 还核对指定 skill 的文件清单和逐字节内容，可重复传入。该核对覆盖制品分发；模型对规则与 skill 的实际遵循情况需要另外验证。
+需要 Python 3、Bash、Git、jq、Codex 和访问 GitHub 的网络。入口固定以仓库根目录运行 `install.sh --profile deepseek`，仅为安装子进程设置隔离的用户目录和 Git 全局配置，并拦截 daemon 重启；运行后清理临时安装。它记录工具版本、代码版本、工作区差异指纹和原始输出到 `.codex/runs/rules-install-*.log`，核对安装后的 `AGENTS.md` 与仓库源文件逐字节一致。`--skill <名称>` 还核对指定 skill 的文件清单和逐字节内容；`--retired-skill <名称>` 在隔离环境中预置旧包，检查当前与旧安装目录中的清理结果，以及无关技能是否保留。两个参数都可重复传入。该核对覆盖制品分发；模型对规则与 skill 的实际遵循情况需要另外验证。
