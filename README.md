@@ -62,7 +62,7 @@ cd codex-config
 
 ### 安装脚本的行为
 
-脚本会在安装前设置当前用户的全局 Git 身份：
+制品准备成功后，脚本会在安装阶段设置当前用户的全局 Git 身份：
 
 ```text
 git config --global user.email "40174982+HeXis-YS@users.noreply.github.com"
@@ -71,16 +71,16 @@ git config --global user.name "HeXis-YS"
 
 这会覆盖已有的全局 Git 身份配置。
 
-`install.sh` 会先校验依赖，然后：
+`install.sh` 按以下顺序执行：
 
-1. 创建 `~/.codex`、`~/.config/git` 和技能安装目录。
-2. 安装 `config.toml`、全局规则和 `skills/` 下的全部 skill（包括 ELI5），并删除本仓库先前安装的 `analyze`、`write-code`、`use-git`、`write-lessons`、`write-report` skill 目录；其他 skill 不受影响。
-3. 校验 `models/<profile>.json` 并写入 `~/.codex/models.json`；`openlux` 除外，它在安装时执行 `codex debug models --bundled` 现取 CLI 自带的官方目录。两种情况都不读取 Z.ai 模型目录，也不进行合并。
-4. 配置文件和模型目录都先写到目标目录内的临时文件再替换，避免中断时留下不完整文件。
-5. 将 `.codex` 写入 `~/.config/git/ignore`。
-6. 由 [`config.toml`](config.toml) 模板生成 `~/.codex/config.toml`，并把 `[model_providers.custom]` 的三个占位符替换为所选后端的 `name`、`base_url` 和 bearer token；并在安装前校验 `<name>` 属于 `deepseek`、`highgo`、`openlux`、`cc-switch`，其他取值或源文件缺少模板占位符时直接报错。脚本同时删除早期版本安装的 `~/.codex/higress.config.toml`、`~/.codex/gateway.config.toml`、`~/.codex/models.gateway.json` 和 `~/.codex/models.higress.json`。
-7. 删除早期版本安装的 `~/.local/bin/update-codex`；CLI 更新改用 `codex update`。
-8. 全部安装完成后重启本地 app-server daemon，让它在新进程里读取刚装好的 `config.toml` 与 `models.json`；无法重启时只打印警告，不影响已完成的安装。
+1. 解析 profile，检查源文件、模板占位符、每个 skill 的正文及元数据，再检查依赖；缺少 `jq` 时按前置条件尝试安装。
+2. 在 `~/.codex/` 下创建独立暂存目录。用 `sed` 替换配置模板中的 provider 名称、URL 和 token，并检查占位符残留。
+3. 将所选 `models/<profile>.json` 复制到暂存目录并校验；`openlux` 在此阶段执行 `codex debug models --bundled`，现取 CLI 自带的官方目录。每次只准备一份模型目录，不进行合并。随后准备全局规则、代理辅助文件和全部本地 skill（包括 ELI5）。
+4. 全部制品准备成功后，安装配置、模型和全局规则，迁移并安装技能，然后设置 Git 身份及 `~/.config/git/ignore`。
+5. 清理本仓库已退役的 `analyze`、`write-code`、`use-git`、`write-lessons`、`write-report` 技能，以及旧的 `~/.codex/higress.config.toml`、`gateway.config.toml`、`models.gateway.json`、`models.higress.json` 和 `~/.local/bin/update-codex`。CLI 更新使用 `codex update`。
+6. 重启本地 app-server daemon，使其读取新配置与模型目录；无法重启时只打印警告，安装仍视为成功。
+
+准备阶段失败时，已有配置、模型、技能和 Git 用户配置保持原样；首次安装可能留下新建的 `~/.codex/` 空目录。暂存目录在成功、错误退出或收到 HUP、INT、TERM 信号时清理。配置和模型使用同一文件系统内的重命名完成单文件原子替换；安装阶段仍逐项写入，后续写入失败可能留下部分更新。
 
 > 如果检测到旧的 `~/.agents/skills/`，脚本会将本仓库管理的技能和 ELI5 迁移到 `~/.codex/skills/`；其他未管理的技能不会被删除。
 
@@ -209,6 +209,10 @@ python3 scripts/verify-rules-install.py
 python3 scripts/verify-rules-install.py --skill write-docs
 # 同时验证已退役 skill 的清理
 python3 scripts/verify-rules-install.py --skill write-docs --retired-skill write-report
+# 核对四种 profile、安装产物、旧路径迁移和准备阶段故障
+python3 scripts/verify-rules-install.py --installer
 ```
 
-需要 Python 3、Bash、Git、jq 和 Codex。入口固定以仓库根目录运行 `install.sh --profile deepseek`，仅为安装子进程设置隔离的用户目录和 Git 全局配置，并拦截 daemon 重启；运行后清理临时安装。它记录工具版本、代码版本、工作区差异指纹和原始输出到 `.codex/runs/rules-install-*.log`，核对安装后的 `AGENTS.md` 与仓库源文件逐字节一致。`--skill <名称>` 还核对指定 skill 的文件清单和逐字节内容；`--retired-skill <名称>` 在隔离环境中预置旧包，检查当前与旧安装目录中的清理结果，以及无关技能是否保留。两个参数都可重复传入。该核对覆盖制品分发；模型对规则与 skill 的实际遵循情况需要另外验证。
+需要 Python 3、Bash、Git、jq 和 Codex。入口默认以仓库根目录运行 `install.sh --profile deepseek`，仅为安装子进程设置隔离的用户目录和 Git 全局配置，并拦截 daemon 重启；运行后清理临时安装。它记录工具版本、代码版本、工作区差异指纹和原始输出到 `.codex/runs/rules-install-*.log`，核对安装后的 `AGENTS.md` 与仓库源文件逐字节一致。`--skill <名称>` 还核对指定 skill 的文件清单和逐字节内容；`--retired-skill <名称>` 在隔离环境中预置旧包，检查当前与旧安装目录中的清理结果，以及无关技能是否保留。两个参数都可重复传入。该核对覆盖制品分发；模型对规则与 skill 的实际遵循情况需要另外验证。
+
+`--installer` 扩大为四种 profile 的核对：检查配置、模型、规则、技能、文件权限和真实 CLI 对配置的接受情况，并验证旧路径迁移、准备失败时旧文件保留、临时目录清理及 daemon 重启失败仅警告。可附加 `--baseline <Git引用>`，以当前仓库制品为相同输入，对比指定版本安装器生成的配置、模型和全局规则。OpenLux 验证使用真实 CLI 现取的 bundled 目录作为固定输入，记录目录指纹，并检查安装器调用该命令。
