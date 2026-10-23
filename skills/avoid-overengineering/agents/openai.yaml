@@ -1,0 +1,4 @@
+interface:
+  display_name: "控制 GPT 过度工程化"
+  short_description: "为 GPT 工程任务提供补充约束，减少无依据的抽象、防御逻辑与测试扩张"
+  default_prompt: "使用 $avoid-overengineering 完成当前工程任务，在满足验收与风险要求的前提下控制附加机制和测试。"
