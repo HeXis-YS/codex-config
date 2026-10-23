@@ -131,8 +131,6 @@ bin_install_dir="$HOME/.local/bin"
 skills_source_dir="$script_dir/skills"
 legacy_skills_install_dir="$HOME/.agents/skills"
 skills_install_dir="$HOME/.codex/skills"
-eli5_repo_url="https://github.com/DreambigOu/ELI5.git"
-eli5_install_dir="$skills_install_dir/eli5"
 retired_skills=(analyze write-code use-git write-lessons write-report)
 
 # Keep the source outside Codex's discovery names so this repository does not load it twice.
@@ -150,20 +148,16 @@ shopt -s nullglob
 skill_source_dirs=("$skills_source_dir"/*)
 shopt -u nullglob
 
-# The generated catalog, the staged catalog, and the ELI5 checkout are removed
-# on every exit path, including the failures below that happen before staging.
+# The generated and staged catalogs are removed on every exit path, including
+# failures below that happen before the catalog is installed.
 staged_models=""
 generated_catalog=""
-eli5_tmp_dir=""
 cleanup() {
     if [ -n "$staged_models" ] && [ -e "$staged_models" ]; then
         rm -f -- "$staged_models"
     fi
     if [ -n "$generated_catalog" ] && [ -e "$generated_catalog" ]; then
         rm -f -- "$generated_catalog"
-    fi
-    if [ -n "$eli5_tmp_dir" ] && [ -d "$eli5_tmp_dir" ]; then
-        rm -rf -- "$eli5_tmp_dir"
     fi
 }
 trap cleanup EXIT
@@ -193,7 +187,7 @@ for skill_source_dir in "${skill_source_dirs[@]}"; do
         || die "required skill metadata is missing: $skill_source_dir/agents/openai.yaml"
 done
 
-managed_skill_names=(eli5)
+managed_skill_names=()
 for skill_source_dir in "${skill_source_dirs[@]}"; do
     managed_skill_names+=("${skill_source_dir##*/}")
 done
@@ -250,23 +244,6 @@ for retired_skill in "${retired_skills[@]}"; do
 done
 printf '%s\n' '.codex' > "$git_ignore_dir/ignore"
 
-eli5_tmp_dir="$(mktemp -d "${TMPDIR:-/tmp}/codex-config-eli5.XXXXXX")" \
-    || die 'failed to create a temporary directory for ELI5.'
-eli5_repo_dir="$eli5_tmp_dir/ELI5"
-git clone --depth 1 "$eli5_repo_url" "$eli5_repo_dir" \
-    || die 'failed to clone the ELI5 skill repository.'
-eli5_source_dir="$eli5_repo_dir/skills/eli5"
-[ -f "$eli5_source_dir/SKILL.md" ] \
-    || die 'the ELI5 repository does not contain skills/eli5/SKILL.md.'
-
-if [ -d "$eli5_install_dir" ]; then
-    cp -a "$eli5_source_dir/." "$eli5_install_dir/"
-elif [ -e "$eli5_install_dir" ] || [ -L "$eli5_install_dir" ]; then
-    die "ELI5 install path is not a directory: $eli5_install_dir"
-else
-    cp -a "$eli5_source_dir" "$eli5_install_dir"
-fi
-
 catalog_filter='
     type == "object"
     and ((.models | type) == "array")
@@ -293,7 +270,7 @@ staged_models=""
 printf 'Installed Codex configuration to %s\n' "$codex_dir"
 printf 'Installed %s models from profile %s to %s\n' \
     "$(jq '.models | length' "$catalog_target")" "$profile_name" "$catalog_target"
-printf 'Installed ELI5 skill to %s\n' "$eli5_install_dir"
+printf 'Installed skills to %s\n' "$skills_install_dir"
 
 # The daemon is a separate process that reads the configuration when it starts,
 # so restart it once the install above is complete to make it load the installed

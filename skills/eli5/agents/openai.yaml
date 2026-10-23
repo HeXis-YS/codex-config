@@ -1,0 +1,7 @@
+interface:
+  display_name: "解释给不同受众"
+  short_description: "按指定受众的知识背景解释概念、代码、错误与文档，调整术语和例子"
+  default_prompt: "使用 $eli5 按目标受众的知识背景解释这个主题。"
+
+policy:
+  allow_implicit_invocation: true

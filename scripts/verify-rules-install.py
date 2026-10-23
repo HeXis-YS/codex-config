@@ -17,7 +17,7 @@ def main():
     root = Path(__file__).resolve().parent.parent
     parser = argparse.ArgumentParser(
         description="Verify global rules and selected skills using the deepseek profile. "
-        "Requires Bash, Git, jq, Codex and GitHub access. Writes a unique log "
+        "Requires Bash, Git, jq and Codex. Writes a unique log "
         "under .codex/runs/; isolates installation and skips daemon restart."
     )
     parser.add_argument(

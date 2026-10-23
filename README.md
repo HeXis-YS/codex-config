@@ -15,7 +15,7 @@
 | [`install.sh`](install.sh) | 将配置、全局规则、个人技能和模型目录安装到当前用户环境，并清理本仓库不再分发的旧 skill。 |
 | [`scripts/verify-rules-install.py`](scripts/verify-rules-install.py) | 全局规则与指定 skill 的隔离安装核对入口，比较安装副本并保留运行日志。 |
 | [`skills/`](skills/) | 随仓库版本化的个人技能；安装脚本会安装其中的全部 skill。 |
-| ELI5 | 外部 Codex 技能；安装脚本会从 GitHub 克隆并安装到 `~/.codex/skills/eli5`。 |
+| [`skills/eli5/`](skills/eli5/) | 随仓库安装的 ELI5 技能，收录自 [DreambigOu/ELI5 的 a766623 提交](https://github.com/DreambigOu/ELI5/tree/a766623b062331fdde53467001379b4ddf3acc2f)，保留上游正文和 MIT 许可证，并补充 Codex 元数据。 |
 | [`.gitignore`](.gitignore) | 忽略本地认证文件 `auth.json`。 |
 
 仓库会把 `custom` provider 的 bearer token 写进 `install.sh` 里各 profile 的 `experimental_bearer_token`（highgo 用的是占位值 `sbx-cs-highgo`），不再依赖环境变量；因此本仓库自身包含凭据，应作为私密仓库对待，不要公开分发或推送到公共远端。其余登录状态（`auth.json`）仍只保存在本机。
@@ -50,7 +50,7 @@ cd codex-config
                          <- skills/write-prompt/
 ~/.codex/skills/write-docs/
                          <- skills/write-docs/
-~/.codex/skills/eli5    <- ELI5 仓库 skills/eli5
+~/.codex/skills/eli5    <- skills/eli5/
 ```
 
 ### 前置条件
@@ -74,14 +74,13 @@ git config --global user.name "HeXis-YS"
 `install.sh` 会先校验依赖，然后：
 
 1. 创建 `~/.codex`、`~/.config/git` 和技能安装目录。
-2. 安装 `config.toml`、全局规则和 `skills/` 下的全部 skill，并删除本仓库先前安装的 `analyze`、`write-code`、`use-git`、`write-lessons`、`write-report` skill 目录；其他 skill 不受影响。
+2. 安装 `config.toml`、全局规则和 `skills/` 下的全部 skill（包括 ELI5），并删除本仓库先前安装的 `analyze`、`write-code`、`use-git`、`write-lessons`、`write-report` skill 目录；其他 skill 不受影响。
 3. 校验 `models/<profile>.json` 并写入 `~/.codex/models.json`；`openlux` 除外，它在安装时执行 `codex debug models --bundled` 现取 CLI 自带的官方目录。两种情况都不读取 Z.ai 模型目录，也不进行合并。
-4. 克隆 ELI5 仓库并将 `skills/eli5` 安装到 `~/.codex/skills/eli5`。
-5. 配置文件和模型目录都先写到目标目录内的临时文件再替换，避免中断时留下不完整文件。
-6. 将 `.codex` 写入 `~/.config/git/ignore`。
-7. 由 [`config.toml`](config.toml) 模板生成 `~/.codex/config.toml`，并把 `[model_providers.custom]` 的三个占位符替换为所选后端的 `name`、`base_url` 和 bearer token；并在安装前校验 `<name>` 属于 `deepseek`、`highgo`、`openlux`、`cc-switch`，其他取值或源文件缺少模板占位符时直接报错。脚本同时删除早期版本安装的 `~/.codex/higress.config.toml`、`~/.codex/gateway.config.toml`、`~/.codex/models.gateway.json` 和 `~/.codex/models.higress.json`。
-8. 删除早期版本安装的 `~/.local/bin/update-codex`；CLI 更新改用 `codex update`。
-9. 全部安装完成后重启本地 app-server daemon，让它在新进程里读取刚装好的 `config.toml` 与 `models.json`；无法重启时只打印警告，不影响已完成的安装。
+4. 配置文件和模型目录都先写到目标目录内的临时文件再替换，避免中断时留下不完整文件。
+5. 将 `.codex` 写入 `~/.config/git/ignore`。
+6. 由 [`config.toml`](config.toml) 模板生成 `~/.codex/config.toml`，并把 `[model_providers.custom]` 的三个占位符替换为所选后端的 `name`、`base_url` 和 bearer token；并在安装前校验 `<name>` 属于 `deepseek`、`highgo`、`openlux`、`cc-switch`，其他取值或源文件缺少模板占位符时直接报错。脚本同时删除早期版本安装的 `~/.codex/higress.config.toml`、`~/.codex/gateway.config.toml`、`~/.codex/models.gateway.json` 和 `~/.codex/models.higress.json`。
+7. 删除早期版本安装的 `~/.local/bin/update-codex`；CLI 更新改用 `codex update`。
+8. 全部安装完成后重启本地 app-server daemon，让它在新进程里读取刚装好的 `config.toml` 与 `models.json`；无法重启时只打印警告，不影响已完成的安装。
 
 > 如果检测到旧的 `~/.agents/skills/`，脚本会将本仓库管理的技能和 ELI5 迁移到 `~/.codex/skills/`；其他未管理的技能不会被删除。
 
@@ -212,4 +211,4 @@ python3 scripts/verify-rules-install.py --skill write-docs
 python3 scripts/verify-rules-install.py --skill write-docs --retired-skill write-report
 ```
 
-需要 Python 3、Bash、Git、jq、Codex 和访问 GitHub 的网络。入口固定以仓库根目录运行 `install.sh --profile deepseek`，仅为安装子进程设置隔离的用户目录和 Git 全局配置，并拦截 daemon 重启；运行后清理临时安装。它记录工具版本、代码版本、工作区差异指纹和原始输出到 `.codex/runs/rules-install-*.log`，核对安装后的 `AGENTS.md` 与仓库源文件逐字节一致。`--skill <名称>` 还核对指定 skill 的文件清单和逐字节内容；`--retired-skill <名称>` 在隔离环境中预置旧包，检查当前与旧安装目录中的清理结果，以及无关技能是否保留。两个参数都可重复传入。该核对覆盖制品分发；模型对规则与 skill 的实际遵循情况需要另外验证。
+需要 Python 3、Bash、Git、jq 和 Codex。入口固定以仓库根目录运行 `install.sh --profile deepseek`，仅为安装子进程设置隔离的用户目录和 Git 全局配置，并拦截 daemon 重启；运行后清理临时安装。它记录工具版本、代码版本、工作区差异指纹和原始输出到 `.codex/runs/rules-install-*.log`，核对安装后的 `AGENTS.md` 与仓库源文件逐字节一致。`--skill <名称>` 还核对指定 skill 的文件清单和逐字节内容；`--retired-skill <名称>` 在隔离环境中预置旧包，检查当前与旧安装目录中的清理结果，以及无关技能是否保留。两个参数都可重复传入。该核对覆盖制品分发；模型对规则与 skill 的实际遵循情况需要另外验证。
