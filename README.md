@@ -9,8 +9,10 @@
 | [`AGENTS.md`](AGENTS.md) | 本仓库的项目级开发规则，用于约束可分发配置、规则和技能的编写与审查；不会被安装。 |
 | [`config.toml`](config.toml) | 唯一的 Codex 全局配置：网页搜索开关、Memory、多 Agent 设置和模型目录指向；模型上下文窗口取自模型目录条目。`[model_providers.custom]` 是带占位符的 provider 模板，由 `install.sh` 按所选 profile 替换其中的 `name`、`base_url` 和 bearer token。 |
 | [`AGENTS.global.md`](AGENTS.global.md) | 全局 Agent 规则的仓库源文件；安装时复制为 `~/.codex/AGENTS.md`。文件名带有 `.global`，使它不会在本仓库中作为项目级指令与 `AGENTS.md` 同时加载。 |
+| [`docs/agent-rule-rationale.md`](docs/agent-rule-rationale.md) | 全局规则的设计依据、适用边界、取舍与复核场景，供维护规则时查阅；不会被安装。 |
 | [`models/`](models/) | 自定义模型目录。每个 JSON 文件都是一个 `{ "models": [...] }` 模型目录片段；安装时按所选 profile 把对应的一份安装为 `~/.codex/models.json`（默认 `deepseek.json`）；`openlux` 没有对应的文件，它的模型列表在安装时从 Codex CLI 现取。字段兼容性与验证方法见 [`models/README.md`](models/README.md)。 |
 | [`install.sh`](install.sh) | 将配置、全局规则、个人技能和模型目录安装到当前用户环境，并清理本仓库不再分发的旧 skill。 |
+| [`scripts/verify-rules-install.py`](scripts/verify-rules-install.py) | 全局规则的隔离安装核对入口，比较安装副本并保留运行日志。 |
 | [`skills/`](skills/) | 随仓库版本化的个人技能；安装脚本会安装其中的全部 skill。 |
 | ELI5 | 外部 Codex 技能；安装脚本会从 GitHub 克隆并安装到 `~/.codex/skills/eli5`。 |
 | [`.gitignore`](.gitignore) | 忽略本地认证文件 `auth.json`。 |
@@ -137,7 +139,9 @@ jq -r '.models[].slug' "$HOME/.codex/models.json"
 
 ### 任务恢复
 
-非简单任务同时使用内置 Plan 清单和 `.codex/todo.md`：Plan 在每个步骤完成时立即更新，todo 通过 `$write-todo` 在关键状态、证据、阻塞或下一动作变化时维护持久笔记，并保留已完成记录供追溯。新任务记录使用 Markdown task list：已完成项用 `- [x]`，待办和唯一下一步用 `- [ ]`。`memories` 已启用，但只作为跨会话背景补充；恢复时以用户最新指令和可观察工作区为准，其次是 todo，最后才是 Memory。`.codex/` 仍是本地工作流目录，不提交到仓库。
+任务记录按 [`AGENTS.global.md`](AGENTS.global.md) §6 的恢复需要启用：预计跨会话、交接、上下文压缩或需要高风险检查点时提前建立 `.codex/todo.md`；执行中出现影响后续工作的关键决策、失败路径、阻塞或未完成依赖且不易直接恢复时，立即补建。能从当前请求和文件状态直接恢复的短问答或局部修改，无需因调用多个工具而建档。
+
+通过 `$write-todo` 记录可验证步骤和唯一下一动作，在状态变化后及时更新，并保留已完成记录。记录使用 Markdown task list：已完成项用 `- [x]`，待办和唯一下一步用 `- [ ]`。恢复时先定位活动任务与相关事故，出现证据缺口或矛盾再补读历史；以用户最新指令和可观察工作区为准，其次是 todo，最后才是 Memory。`.codex/` 仍是本地工作流目录，不提交到仓库。各项边界的原因见[设计依据](docs/agent-rule-rationale.md)。
 
 新增模型时，保持文件结构为：
 
@@ -183,3 +187,11 @@ bash -n install.sh
 jq -e '.models | type == "array" and all(.[]; (.slug | type) == "string" and (.slug | length) > 0)' models/*.json
 git diff --check
 ```
+
+修改全局规则后，通过持久入口核对安装副本：
+
+```bash
+python3 scripts/verify-rules-install.py
+```
+
+需要 Python 3、Bash、Git、jq、Codex 和访问 GitHub 的网络。入口固定以仓库根目录运行 `install.sh --profile deepseek`，仅为安装子进程设置隔离的用户目录和 Git 全局配置，并拦截 daemon 重启；运行后清理临时安装。它记录工具版本、代码版本、工作区差异指纹和原始输出到 `.codex/runs/rules-install-*.log`，核对安装后的 `AGENTS.md` 与仓库源文件逐字节一致。该核对覆盖规则分发；模型对规则的实际遵循情况需要另外验证。
