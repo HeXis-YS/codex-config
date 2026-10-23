@@ -1,0 +1,4 @@
+interface:
+  display_name: "撰写中英文文档"
+  short_description: "撰写与审校中英文文档、注释、报告和交互文字，保留原意并改善结构与表达"
+  default_prompt: "使用 $write-docs 按目标读者与语言撰写或审校这份文字，保留事实、条件和证据边界。"

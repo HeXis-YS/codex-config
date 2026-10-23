@@ -10,9 +10,10 @@
 | [`config.toml`](config.toml) | 唯一的 Codex 全局配置：网页搜索开关、Memory、多 Agent 设置和模型目录指向；模型上下文窗口取自模型目录条目。`[model_providers.custom]` 是带占位符的 provider 模板，由 `install.sh` 按所选 profile 替换其中的 `name`、`base_url` 和 bearer token。 |
 | [`AGENTS.global.md`](AGENTS.global.md) | 全局 Agent 规则的仓库源文件；安装时复制为 `~/.codex/AGENTS.md`。文件名带有 `.global`，使它不会在本仓库中作为项目级指令与 `AGENTS.md` 同时加载。 |
 | [`docs/agent-rule-rationale.md`](docs/agent-rule-rationale.md) | 全局规则的设计依据、适用边界、取舍与复核场景，供维护规则时查阅；不会被安装。 |
+| [`docs/write-docs-rationale.md`](docs/write-docs-rationale.md) | 中英文文档能力的设计依据、参考材料取舍和复核场景；不会被安装。 |
 | [`models/`](models/) | 自定义模型目录。每个 JSON 文件都是一个 `{ "models": [...] }` 模型目录片段；安装时按所选 profile 把对应的一份安装为 `~/.codex/models.json`（默认 `deepseek.json`）；`openlux` 没有对应的文件，它的模型列表在安装时从 Codex CLI 现取。字段兼容性与验证方法见 [`models/README.md`](models/README.md)。 |
 | [`install.sh`](install.sh) | 将配置、全局规则、个人技能和模型目录安装到当前用户环境，并清理本仓库不再分发的旧 skill。 |
-| [`scripts/verify-rules-install.py`](scripts/verify-rules-install.py) | 全局规则的隔离安装核对入口，比较安装副本并保留运行日志。 |
+| [`scripts/verify-rules-install.py`](scripts/verify-rules-install.py) | 全局规则与指定 skill 的隔离安装核对入口，比较安装副本并保留运行日志。 |
 | [`skills/`](skills/) | 随仓库版本化的个人技能；安装脚本会安装其中的全部 skill。 |
 | ELI5 | 外部 Codex 技能；安装脚本会从 GitHub 克隆并安装到 `~/.codex/skills/eli5`。 |
 | [`.gitignore`](.gitignore) | 忽略本地认证文件 `auth.json`。 |
@@ -49,6 +50,8 @@ cd codex-config
                          <- skills/write-report/
 ~/.codex/skills/write-prompt/
                          <- skills/write-prompt/
+~/.codex/skills/write-docs/
+                         <- skills/write-docs/
 ~/.codex/skills/eli5    <- ELI5 仓库 skills/eli5
 ```
 
@@ -104,6 +107,7 @@ test -f "$HOME/.codex/skills/record-incident/SKILL.md"
 test -f "$HOME/.codex/skills/score-incident/SKILL.md"
 test -f "$HOME/.codex/skills/write-report/SKILL.md"
 test -f "$HOME/.codex/skills/write-prompt/SKILL.md"
+test -f "$HOME/.codex/skills/write-docs/SKILL.md"
 test -f "$HOME/.codex/skills/eli5/SKILL.md"
 test ! -e "$HOME/.codex/skills/analyze" && test ! -L "$HOME/.codex/skills/analyze"
 test ! -e "$HOME/.codex/skills/write-code" && test ! -L "$HOME/.codex/skills/write-code"
@@ -142,6 +146,14 @@ jq -r '.models[].slug' "$HOME/.codex/models.json"
 任务记录按 [`AGENTS.global.md`](AGENTS.global.md) §6 的恢复需要启用：预计跨会话、交接、上下文压缩或需要高风险检查点时提前建立 `.codex/todo.md`；执行中出现影响后续工作的关键决策、失败路径、阻塞或未完成依赖且不易直接恢复时，立即补建。能从当前请求和文件状态直接恢复的短问答或局部修改，无需因调用多个工具而建档。
 
 通过 `$write-todo` 记录可验证步骤和唯一下一动作，在状态变化后及时更新，并保留已完成记录。记录使用 Markdown task list：已完成项用 `- [x]`，待办和唯一下一步用 `- [ ]`。恢复时先定位活动任务与相关事故，出现证据缺口或矛盾再补读历史；以用户最新指令和可观察工作区为准，其次是 todo，最后才是 Memory。`.codex/` 仍是本地工作流目录，不提交到仓库。各项边界的原因见[设计依据](docs/agent-rule-rationale.md)。
+
+### 文档与说明性文字
+
+[`write-docs`](skills/write-docs/SKILL.md) 用于中英文技术文档、注释、报告、规则说明和面向用户文字的撰写、翻译与审校。它共用语义保真和审校流程，按需读取中文、英文及文体参考；普通任务不会仅因有文字输出就自动启用。可以直接调用 `$write-docs`，例如“用中文改写这份安装指南”或“Review this English README for clarity”。
+
+技术报告的证据与分析仍由 `write-report` 负责，提示词的行为设计由 `write-prompt` 负责；`write-docs` 改善这些产物的语言与结构。能力组织、参考来源和验收边界见[设计依据](docs/write-docs-rationale.md)。
+
+### 模型与环境迁移
 
 新增模型时，保持文件结构为：
 
@@ -188,10 +200,15 @@ jq -e '.models | type == "array" and all(.[]; (.slug | type) == "string" and (.s
 git diff --check
 ```
 
-修改全局规则后，通过持久入口核对安装副本：
+## 隔离安装核对
+
+修改全局规则或 skill 后，根据需要选择核对范围：
 
 ```bash
+# 核对全局规则
 python3 scripts/verify-rules-install.py
+# 核对全局规则与指定 skill
+python3 scripts/verify-rules-install.py --skill write-docs
 ```
 
-需要 Python 3、Bash、Git、jq、Codex 和访问 GitHub 的网络。入口固定以仓库根目录运行 `install.sh --profile deepseek`，仅为安装子进程设置隔离的用户目录和 Git 全局配置，并拦截 daemon 重启；运行后清理临时安装。它记录工具版本、代码版本、工作区差异指纹和原始输出到 `.codex/runs/rules-install-*.log`，核对安装后的 `AGENTS.md` 与仓库源文件逐字节一致。该核对覆盖规则分发；模型对规则的实际遵循情况需要另外验证。
+需要 Python 3、Bash、Git、jq、Codex 和访问 GitHub 的网络。入口固定以仓库根目录运行 `install.sh --profile deepseek`，仅为安装子进程设置隔离的用户目录和 Git 全局配置，并拦截 daemon 重启；运行后清理临时安装。它记录工具版本、代码版本、工作区差异指纹和原始输出到 `.codex/runs/rules-install-*.log`，核对安装后的 `AGENTS.md` 与仓库源文件逐字节一致。`--skill <名称>` 还核对指定 skill 的文件清单和逐字节内容，可重复传入。该核对覆盖制品分发；模型对规则与 skill 的实际遵循情况需要另外验证。

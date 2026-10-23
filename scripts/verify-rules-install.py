@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Run install.sh in an isolated home and verify the installed global rules."""
+"""Run install.sh in an isolated home and verify rules and selected skills."""
 
 import argparse
 import hashlib
@@ -13,12 +13,23 @@ import tempfile
 
 
 def main():
-    argparse.ArgumentParser(
-        description="Verify global-rule installation using the deepseek profile. "
+    root = Path(__file__).resolve().parent.parent
+    parser = argparse.ArgumentParser(
+        description="Verify global rules and selected skills using the deepseek profile. "
         "Requires Bash, Git, jq, Codex and GitHub access. Writes a unique log "
         "under .codex/runs/; isolates installation and skips daemon restart."
-    ).parse_args()
-    root = Path(__file__).resolve().parent.parent
+    )
+    parser.add_argument(
+        "--skill", action="append", default=[],
+        choices=sorted(path.name for path in (root / "skills").iterdir() if path.is_dir()),
+        help="Also compare every file in this installed skill; repeat for multiple skills.",
+    )
+    args = parser.parse_args()
+    skill_files = {}
+    for name in dict.fromkeys(args.skill):
+        source_dir = root / "skills" / name
+        skill_files[name] = sorted(path.relative_to(source_dir)
+                                   for path in source_dir.rglob("*") if path.is_file())
     for command in ("bash", "git", "jq", "codex"):
         if shutil.which(command) is None:
             raise SystemExit(f"Required command is missing: {command}")
@@ -30,9 +41,13 @@ def main():
         print(f"Log: {log.name}", flush=True)
         try:
             log.write(f"Environment: {platform.platform()}; Python {sys.version}\n")
-            log.write("Entry: python3 scripts/verify-rules-install.py; profile: deepseek\n")
-            for path in (Path(__file__).resolve(), root / "AGENTS.global.md",
-                         root / "install.sh", root / "config.toml", root / "models/deepseek.json"):
+            log.write(f"Entry: python3 scripts/verify-rules-install.py; profile: deepseek; "
+                      f"skills: {list(skill_files)}\n")
+            inputs = [Path(__file__).resolve(), root / "AGENTS.global.md",
+                      root / "install.sh", root / "config.toml", root / "models/deepseek.json"]
+            for name, paths in skill_files.items():
+                inputs.extend(root / "skills" / name / path for path in paths)
+            for path in inputs:
                 log.write(f"SHA256 {path.relative_to(root)}: {hashlib.sha256(path.read_bytes()).hexdigest()}\n")
             # Record the worktree identity without copying configuration secrets into logs.
             diff = subprocess.check_output(["git", "diff", "HEAD", "--binary"], cwd=root)
@@ -72,11 +87,22 @@ def main():
                 if installed != source:
                     raise RuntimeError("Installed AGENTS.md differs from AGENTS.global.md")
                 log.write("PASS: installed AGENTS.md is byte-identical to AGENTS.global.md\n")
+                for name, paths in skill_files.items():
+                    source_dir = root / "skills" / name
+                    installed_dir = test_home / ".codex" / "skills" / name
+                    installed_paths = sorted(path.relative_to(installed_dir)
+                                             for path in installed_dir.rglob("*") if path.is_file())
+                    if installed_paths != paths:
+                        raise RuntimeError(f"Installed file list differs for skill {name}")
+                    for path in paths:
+                        if (installed_dir / path).read_bytes() != (source_dir / path).read_bytes():
+                            raise RuntimeError(f"Installed skill file differs: {name}/{path}")
+                    log.write(f"PASS: skill {name}, {len(paths)} files are byte-identical\n")
             log.write("PASS: temporary installation removed\n")
         except Exception as error:
             log.write(f"FAIL: {error}\n")
             raise
-    print("PASS: isolated global-rule installation")
+    print("PASS: isolated installation of global rules and selected skills")
 
 
 if __name__ == "__main__":
