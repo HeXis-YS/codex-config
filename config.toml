@@ -14,6 +14,9 @@ model_catalog_json = "~/.codex/models.json"
 memories = true
 multi_agent_v2 = true
 
+[tools.update_plan]
+enabled = true
+
 # Provider template: install.sh replaces the name, base_url and bearer token
 # placeholders with the values of the selected backend.
 [model_providers.custom]

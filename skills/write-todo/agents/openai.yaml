@@ -1,7 +1,7 @@
 interface:
-  display_name: "维护任务笔记"
-  short_description: "创建或更新 .codex/todo.md 的任务恢复笔记，不清理历史记录"
-  default_prompt: "使用 $write-todo 更新当前任务的 .codex/todo.md。"
+  display_name: "保存任务交接"
+  short_description: "保存跨会话与关键检查点的恢复依据，不逐步复制计划或清理历史记录"
+  default_prompt: "使用 $write-todo 为当前任务保存交接状态、证据位置和唯一下一动作。"
 
 policy:
   allow_implicit_invocation: true

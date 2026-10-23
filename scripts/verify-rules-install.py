@@ -11,6 +11,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import tomllib
 
 
 PROFILES = {
@@ -83,6 +84,10 @@ def isolated_environment(base, catalog=None):
 def verify_files(root, test_home, skill_files):
     require((test_home / ".codex/AGENTS.md").read_bytes() == (root / "AGENTS.global.md").read_bytes(),
             "Installed AGENTS.md differs from AGENTS.global.md")
+    source_config = tomllib.loads((root / "config.toml").read_text())
+    installed_config = tomllib.loads((test_home / ".codex/config.toml").read_text())
+    require(installed_config.get("tools", {}) == source_config.get("tools", {}),
+            "Installed tool settings differ from config.toml")
     for name, paths in skill_files.items():
         source_dir = root / "skills" / name
         installed_dir = test_home / ".codex/skills" / name
@@ -258,7 +263,7 @@ def main():
     root = Path(__file__).resolve().parent.parent
     parser = argparse.ArgumentParser(
         description="Verify global rules and selected skills using the deepseek profile. "
-        "Requires Bash, Git, jq and Codex. Writes a unique log "
+        "Requires Python 3.11+, Bash, Git, jq and Codex. Writes a unique log "
         "under .codex/runs/; isolates installation and skips daemon restart."
     )
     parser.add_argument(
@@ -350,6 +355,7 @@ def main():
                                    env=env, stdout=log, stderr=subprocess.STDOUT, check=True)
                     verify_files(root, test_home, skill_files)
                     log.write("PASS: installed AGENTS.md is byte-identical to AGENTS.global.md\n")
+                    log.write("PASS: installed tool settings match config.toml\n")
                     for name, paths in skill_files.items():
                         log.write(f"PASS: skill {name}, {len(paths)} files are byte-identical\n")
                     for path in retired_paths:

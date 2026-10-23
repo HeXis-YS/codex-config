@@ -14,6 +14,7 @@
 | [`models/`](models/) | 自定义模型目录。每个 JSON 文件都是一个 `{ "models": [...] }` 模型目录片段；安装时按所选 profile 把对应的一份安装为 `~/.codex/models.json`（默认 `deepseek.json`）；`openlux` 没有对应的文件，它的模型列表在安装时从 Codex CLI 现取。字段兼容性与验证方法见 [`models/README.md`](models/README.md)。 |
 | [`install.sh`](install.sh) | 将配置、全局规则、个人技能和模型目录安装到当前用户环境，并清理本仓库不再分发的旧 skill。 |
 | [`scripts/verify-rules-install.py`](scripts/verify-rules-install.py) | 全局规则与指定 skill 的隔离安装核对入口，比较安装副本并保留运行日志。 |
+| [`scripts/verify-plan-tool.py`](scripts/verify-plan-tool.py) | 用真实 CLI 与本地 API 响应核对计划工具的配置开关及执行，不调用模型服务。 |
 | [`skills/`](skills/) | 随仓库版本化的个人技能；安装脚本会安装其中的全部 skill。 |
 | [`skills/avoid-overengineering/`](skills/avoid-overengineering/SKILL.md) | 面向 GPT 的过度工程化补充约束，控制无依据的抽象、防御逻辑、规则扩张和测试扩张。 |
 | [`skills/eli5/`](skills/eli5/) | 随仓库安装的 ELI5 技能，收录自 [DreambigOu/ELI5 的 a766623 提交](https://github.com/DreambigOu/ELI5/tree/a766623b062331fdde53467001379b4ddf3acc2f)，保留上游正文和 MIT 许可证，并补充 Codex 元数据。 |
@@ -140,11 +141,27 @@ jq -r '.models[].slug' "$HOME/.codex/models.json"
 
 修改配置、规则、`skills/` 或 `models/*.json` 后提交 Git；在其他环境执行 `git pull` 后重新运行 `./install.sh` 即可同步。重新安装会覆盖上述 `~/.codex` 文件和 `skills/` 中同名的用户级 skill，并只安装所选 profile 的那一份模型列表。
 
-### 任务恢复
+### 纠错模式
 
-任务记录按 [`AGENTS.global.md`](AGENTS.global.md) §6 的恢复需要启用：预计跨会话、交接、上下文压缩或需要高风险检查点时提前建立 `.codex/todo.md`；执行中出现影响后续工作的关键决策、失败路径、阻塞或未完成依赖且不易直接恢复时，立即补建。能从当前请求和文件状态直接恢复的短问答或局部修改，无需因调用多个工具而建档。
+将 `纠错模式` 作为指令发送，可在后面补充问题。Agent 会暂停推进和写入、保留现场，核对目标、事实与分歧，确认方向后再恢复。讨论或引用这个词不触发协议；普通纠正按其内容处理，不再通过感叹号或对情绪的猜测触发强制暂停。具体边界见 [`AGENTS.global.md`](AGENTS.global.md) §3.3。
 
-通过 `$write-todo` 记录可验证步骤和唯一下一动作，在状态变化后及时更新，并保留已完成记录。记录使用 Markdown task list：已完成项用 `- [x]`，待办和唯一下一步用 `- [ ]`。恢复时先定位活动任务与相关事故，出现证据缺口或矛盾再补读历史；以用户最新指令和可观察工作区为准，其次是 todo，最后才是 Memory。`.codex/` 仍是本地工作流目录，不提交到仓库。各项边界的原因见[设计依据](docs/agent-rule-rationale.md)。
+回答可以自然组织结果与分析，仍需简要表达对意图的理解。建议、问题和待决定事项可以穿插正文，但须在结尾集中编号列出，方便逐一回应；没有这些事项时不添加清单。
+
+### 会话计划与任务交接
+
+`config.toml` 显式设置 `tools.update_plan.enabled = true`。需要协调步骤和进度时使用会话内计划；短任务无需建计划。已有会话是否提供该工具以实际工具列表为准，修改配置不代表当前会话立即获得工具。
+
+`.codex/todo.md` 用于跨会话交接或需要持久保存恢复依据的关键检查点。通过 `$write-todo` 保存目标、范围、当前状态、唯一下一动作和证据位置，在变化影响恢复时更新。它不逐步复制计划，短任务也无需补写完成档案；上下文压缩只有在关键依据可能丢失时才需要保存快照。现有历史保留，不为新格式重写旧记录。
+
+同一会话恢复时先核对计划与上下文；新会话或接手任务时定位相关交接条目，再以最新指令、工作区和运行证据核对。事故记录仅在用户要求记录、评分或集中复盘时按对象处理，不作为日常启动或恢复输入，也不自动生成项目规则。`.codex/` 仍是本地工作流目录，不提交到仓库。职责与写入边界见全局规则 §6、§7.2 及[设计依据](docs/agent-rule-rationale.md)。
+
+维护计划工具配置时，可运行：
+
+```bash
+python3 scripts/verify-plan-tool.py
+```
+
+需要 Python 3.11+ 和 Codex。入口使用隔离配置、仓库默认模型目录和本地 API 响应，核对真实 CLI 是否按开关提供 `update_plan`，并执行一次计划更新；日志保存在 `.codex/runs/plan-tool-*.log`，临时状态在结束后清理。它不调用模型服务，也不验证模型规划质量或上下文压缩后的恢复效果。
 
 ### 文档与说明性文字
 
@@ -220,6 +237,6 @@ python3 scripts/verify-rules-install.py --skill write-docs --retired-skill write
 python3 scripts/verify-rules-install.py --installer
 ```
 
-需要 Python 3、Bash、Git、jq 和 Codex。入口默认以仓库根目录运行 `install.sh --profile deepseek`，仅为安装子进程设置隔离的用户目录和 Git 全局配置，并拦截 daemon 重启；运行后清理临时安装。它记录工具版本、代码版本、工作区差异指纹和原始输出到 `.codex/runs/rules-install-*.log`，核对安装后的 `AGENTS.md` 与仓库源文件逐字节一致。`--skill <名称>` 还核对指定 skill 的文件清单和逐字节内容；`--retired-skill <名称>` 在隔离环境中预置旧包，检查当前与旧安装目录中的清理结果，以及无关技能是否保留。两个参数都可重复传入。该核对覆盖制品分发；模型对规则与 skill 的实际遵循情况需要另外验证。
+需要 Python 3.11+、Bash、Git、jq 和 Codex。入口默认以仓库根目录运行 `install.sh --profile deepseek`，仅为安装子进程设置隔离的用户目录和 Git 全局配置，并拦截 daemon 重启；运行后清理临时安装。它记录工具版本、代码版本、工作区差异指纹和原始输出到 `.codex/runs/rules-install-*.log`，核对安装后的 `AGENTS.md` 与仓库源文件逐字节一致，以及工具配置是否完整保留。`--skill <名称>` 还核对指定 skill 的文件清单和逐字节内容；`--retired-skill <名称>` 在隔离环境中预置旧包，检查当前与旧安装目录中的清理结果，以及无关技能是否保留。两个参数都可重复传入。该核对覆盖制品分发；模型对规则与 skill 的实际遵循情况需要另外验证。
 
 `--installer` 扩大为四种 profile 的核对：检查配置、模型、规则、技能、文件权限和真实 CLI 对配置的接受情况，并验证旧路径迁移、准备失败时旧文件保留、临时目录清理及 daemon 重启失败仅警告。可附加 `--baseline <Git引用>`，以当前仓库制品为相同输入，对比指定版本安装器生成的配置、模型和全局规则。OpenLux 验证使用真实 CLI 现取的 bundled 目录作为固定输入，记录目录指纹，并检查安装器调用该命令。
