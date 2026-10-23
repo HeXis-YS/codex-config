@@ -36,9 +36,9 @@
 
 ## Schema 文档的专用参考
 
-用户提供的 `schema-documentation-guidelines.md` 根据 OpenAI 文档风格总结，现移入 skill 的包内参考，作为本项目写作约定随包安装。保留原有字段格式、类型分支、请求与响应组织、错误及弃用信息等正文；原根目录文件不再维护，避免出现两个权威版本。
+用户提供的 `schema-documentation-guidelines.md` 参考 [OpenAI Responses API 的 Create 文档](https://developers.openai.com/api/reference/resources/responses/methods/create/index.md) 总结，现移入 skill 的包内参考，作为本项目写作约定随包安装。保留原有字段格式、类型分支、请求与响应组织、错误及弃用信息等正文；原根目录文件不再维护，避免出现两个权威版本。该 OpenAI 页面是具体 API 的格式参考，不是本指南的发布方，也不构成通用 schema 标准。
 
-指南中的格式适用于中英文，说明文字随目标语言调整。示例展示写法，具体字段、默认值、枚举、弃用替代项及异常结构以目标接口契约为准；指南本身不提供新增接口行为的依据。这次接入没有对 OpenAI 当前文档或 API 契约进行外部核验，也不作官方规范符合性声明。
+指南中的格式适用于中英文，说明文字随目标语言调整。示例展示写法，具体字段、默认值、枚举、弃用替代项及异常结构以目标接口契约为准；指南本身不提供新增接口行为的依据，也不声明符合 OpenAI 官方规范或完整 ASD-STE100 标准。
 
 ## 参考材料如何进入能力包
 
@@ -53,7 +53,13 @@
 | `simplified-technical-english-skill/skills/simplified-technical-english/SKILL.md` | 注释解释原因与约束，恢复建议有依据，错误文字指明对象。 | 注释范围包含代码契约和工具标记保护；情态词按实际含义处理。 |
 | `document-style-guide/docs/` | 信息层次、链接、术语、混排和数据表达。 | 沿用目标项目风格；句长和段落长度作为审校线索，不作为通用硬阈值。 |
 
-这些材料包含不同用途和不同标准版本的规则。首版以本项目的交付目标为准：保证含义与证据准确，减少读者定位和理解信息的成本。中文 30/40 字、英文 20/25 词、固定段落长度及禁词表没有直接成为默认验收条件；采用这些约束前，需要对应文体的需求和效果依据。
+### 可追溯的外部来源
+
+以下仓库补充了能力设计所参考的公开材料。英语 STE 相关来源包括 [danyuchn/asd-ste100-skill](https://github.com/danyuchn/asd-ste100-skill)、[nuelcyoung/asd-ste100](https://github.com/nuelcyoung/asd-ste100)、[TheAngryByrd/simplified-technical-english-skill](https://github.com/TheAngryByrd/simplified-technical-english-skill)、[0xpili/simplified-technical-english](https://github.com/0xpili/simplified-technical-english) 和 [MarcoDotIO/ste-skill](https://github.com/MarcoDotIO/ste-skill)。中文技术写作相关来源包括 [dualface/ste-zh](https://github.com/dualface/ste-zh)、[mzopedia/simplified-technical-chinese](https://github.com/mzopedia/simplified-technical-chinese) 和 [JICio/simplified-technical-chinese](https://github.com/JICio/simplified-technical-chinese)；通用中文技术文档风格另参考 [ruanyf/document-style-guide](https://github.com/ruanyf/document-style-guide)。
+
+这些来源用于比较表达指导、术语约定和 skill 组织方式；本能力按本仓库的目标选择和改写相关做法，不将任一来源整体复制为规范，也不据此声明符合完整的 ASD-STE100 标准。
+
+上述本地材料包含不同用途和不同标准版本的规则。首版以本项目的交付目标为准：保证含义与证据准确，减少读者定位和理解信息的成本。中文 30/40 字、英文 20/25 词、固定段落长度及禁词表没有直接成为默认验收条件；采用这些约束前，需要对应文体的需求和效果依据。
 
 ## 审校顺序与证据边界
 

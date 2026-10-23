@@ -4,7 +4,7 @@
 
 ## 来源与适用范围
 
-本指南由用户根据 OpenAI 文档风格总结，用作本项目的 schema 文档写作约定。适用于中英文文档：说明文字使用目标语言，字段签名中的类型、`optional`、`or null` 及 `Body Parameters`、`Returns` 等结构标记按本指南书写。已有文档或更具体的项目约定按当前任务要求保留。
+本指南由用户参考 [OpenAI Responses API 的 Create 文档](https://developers.openai.com/api/reference/resources/responses/methods/create/index.md) 总结，作为本项目的 schema 文档写作约定；该 API 页面是格式参考，不代表 OpenAI 发布了本指南或将其中格式定义为通用规范。适用于中英文文档：说明文字使用目标语言，字段签名中的类型、`optional`、`or null` 及 `Body Parameters`、`Returns` 等结构标记按本指南书写。已有文档或更具体的项目约定按当前任务要求保留。
 
 撰写前核对目标接口的 schema、类型定义及必要的运行时依据。下文中的字段、模型标识、默认值、状态和弃用替代项用于展示写法，使用时须依据目标接口的实际契约确认。错误、不完整响应和弃用字段仅在接口存在对应契约时展开；缺失的约束标明未决内容，不能为满足示例结构而新增字段或编造行为。
 
