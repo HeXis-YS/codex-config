@@ -46,16 +46,18 @@
 
 | 材料 | 纳入的依据 | 取舍 |
 | --- | --- | --- |
-| `asd-ste100/references/meaning-fidelity.md` | 先核对事实、条件、执行者、义务强度和不确定性，再替换词句。 | 保留方法，逐项审查例子；“主动句”不能成为补造执行者或改变要求的理由。 |
-| `ste-skill/skills/asd-ste100/SKILL.md` 及 `references/` | 保护命令、路径和界面原文；按用途组织；区分检查器结果与语义审查。 | 采用可迁移的方法，保留文档自身组织形式；不引入标准符合性承诺。 |
-| `simplified-technical-chinese/SKILL.md`、`规范.md`、`docs/校准报告.md` | 直接动词、明确指代、条件先于动作、术语一致和数字口径。 | “约 5 秒”保留约数；期限缺失时求证。校准报告衡量检查器发现的准确性，未衡量阅读效果，其数值未经本次复现。 |
-| `ste-zh/references/terminology.md` | 区分修改完成、验证通过、失败、已知未执行和证据缺失。 | 保留语义区分，允许自然措辞，不引入统一状态词模板。 |
-| `simplified-technical-english-skill/skills/simplified-technical-english/SKILL.md` | 注释解释原因与约束，恢复建议有依据，错误文字指明对象。 | 注释范围包含代码契约和工具标记保护；情态词按实际含义处理。 |
-| `document-style-guide/docs/` | 信息层次、链接、术语、混排和数据表达。 | 沿用目标项目风格；句长和段落长度作为审校线索，不作为通用硬阈值。 |
+| `.codex/ste/asd-ste100/references/meaning-fidelity.md`（[nuelcyoung/asd-ste100，快照 `3fe2ccb`](https://github.com/nuelcyoung/asd-ste100/blob/3fe2ccb51b1a98fb8d40aa88ec448575b8439ddb/references/meaning-fidelity.md)） | 先核对事实、条件、执行者、义务强度和不确定性，再替换词句。 | 保留方法，逐项审查例子；“主动句”不能成为补造执行者或改变要求的理由。 |
+| `.codex/ste/ste-skill/skills/asd-ste100/`（[MarcoDotIO/ste-skill，快照 `c82826c`](https://github.com/MarcoDotIO/ste-skill/tree/c82826c7c085b82e54709fe81d24e9d7b3dd3e93/skills/asd-ste100)） | 按文本用途采用不同规则；保护命令、路径和界面原文；区分检查器结果与语义审查。 | 采用可迁移的方法，保留文档自身组织形式；不引入标准符合性承诺。 |
+| `.codex/ste/asd-ste100-skill/`（[danyuchn/asd-ste100-skill，快照 `cd62d29`](https://github.com/danyuchn/asd-ste100-skill/tree/cd62d297d5ef7cf9f59718cadc233ab2876ea013)） | 区分严格指令文本与说明性文字；改写时保留事实，检查器只作为结构问题提示。 | 用作 STE 方法参考，不将其针对 Agent 输出的特定触发范围套用到所有文档。 |
+| `.codex/ste/simplified-technical-english/`（[0xpili/simplified-technical-english，快照 `1e148d6`](https://github.com/0xpili/simplified-technical-english/tree/1e148d670cba46685ad2b4c3f2354a637a7fdbbe)） | 参考步骤与描述分类、术语一致及英语 STE 规则的组织方式。 | 不照搬固定词表、句长限制或全局强制套用；本 skill 覆盖多类中英文文本，需保留具体文体和来源语气。 |
+| `.codex/ste/simplified-technical-chinese/SKILL.md`、`规范.md`、`docs/校准报告.md`（[mzopedia/simplified-technical-chinese，快照 `90ad0f0`](https://github.com/mzopedia/simplified-technical-chinese/tree/90ad0f004b26d7a66e286980b5efaf4769ad8584)） | 直接动词、明确指代、条件先于动作、术语一致和数字口径。 | “约 5 秒”保留约数；期限缺失时求证。校准报告衡量检查器发现的准确性，未衡量阅读效果，其数值未经本次复现。 |
+| `.codex/ste/ste-zh/references/terminology.md`（[dualface/ste-zh，快照 `27d57e4`](https://github.com/dualface/ste-zh/blob/27d57e4d6609ce88e14dd15cbae355223a83b246/references/terminology.md)） | 区分修改完成、验证通过、失败、已知未执行和证据缺失。 | 保留语义区分，允许自然措辞，不引入统一状态词模板。 |
+| `.codex/ste/simplified-technical-english-skill/skills/simplified-technical-english/SKILL.md`（[TheAngryByrd/simplified-technical-english-skill，快照 `5d2c32d`](https://github.com/TheAngryByrd/simplified-technical-english-skill/blob/5d2c32d32840dc823a507e738f81c357ff297087/skills/simplified-technical-english/SKILL.md)） | 保留技术含义、条件、例外及必要风险；区分步骤、描述和说明。 | 注释范围包含代码契约和工具标记保护；情态词按实际含义处理。 |
+| `.codex/ste/document-style-guide/docs/`（[ruanyf/document-style-guide，快照 `5719517`](https://github.com/ruanyf/document-style-guide/tree/571951731efb4b83b1939af1d3dd830441ebef45/docs)） | 信息层次、链接、术语、混排和数据表达。 | 沿用目标项目风格；句长和段落长度作为审校线索，不作为通用硬阈值。 |
 
 ### 可追溯的外部来源
 
-以下仓库补充了能力设计所参考的公开材料。英语 STE 相关来源包括 [danyuchn/asd-ste100-skill](https://github.com/danyuchn/asd-ste100-skill)、[nuelcyoung/asd-ste100](https://github.com/nuelcyoung/asd-ste100)、[TheAngryByrd/simplified-technical-english-skill](https://github.com/TheAngryByrd/simplified-technical-english-skill)、[0xpili/simplified-technical-english](https://github.com/0xpili/simplified-technical-english) 和 [MarcoDotIO/ste-skill](https://github.com/MarcoDotIO/ste-skill)。中文技术写作相关来源包括 [dualface/ste-zh](https://github.com/dualface/ste-zh)、[mzopedia/simplified-technical-chinese](https://github.com/mzopedia/simplified-technical-chinese) 和 [JICio/simplified-technical-chinese](https://github.com/JICio/simplified-technical-chinese)；通用中文技术文档风格另参考 [ruanyf/document-style-guide](https://github.com/ruanyf/document-style-guide)。
+上表将 `.codex/ste` 中的八份仓库快照逐一对应到上游仓库，并用快照提交链接定位所依据的版本。用户另提供了 [JICio/simplified-technical-chinese](https://github.com/JICio/simplified-technical-chinese) 作为补充来源；它不在当前 `.codex/ste` 快照中，因此不把它归为上表所述的本地提炼材料。
 
 这些来源用于比较表达指导、术语约定和 skill 组织方式；本能力按本仓库的目标选择和改写相关做法，不将任一来源整体复制为规范，也不据此声明符合完整的 ASD-STE100 标准。
 
