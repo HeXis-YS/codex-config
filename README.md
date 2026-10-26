@@ -16,6 +16,7 @@
 | [`scripts/verify-rules-install.py`](scripts/verify-rules-install.py) | 全局规则与指定 skill 的隔离安装核对入口，比较安装副本并保留运行日志。 |
 | [`scripts/verify-plan-tool.py`](scripts/verify-plan-tool.py) | 用真实 CLI 与本地 API 响应核对计划工具的配置开关及执行，不调用模型服务。 |
 | [`skills/`](skills/) | 随仓库版本化的个人技能；安装脚本会安装其中的全部 skill。 |
+| [`skills/correct-course/`](skills/correct-course/SKILL.md) | 仅显式调用的“纠错模式”，暂停任务并核对目标、事实与行动方向。 |
 | [`skills/avoid-overengineering/`](skills/avoid-overengineering/SKILL.md) | 面向 GPT 的过度工程化补充约束，控制无依据的抽象、防御逻辑、规则扩张和测试扩张。 |
 | [`skills/eli5/`](skills/eli5/) | 随仓库安装的 ELI5 技能，收录自 [DreambigOu/ELI5 的 a766623 提交](https://github.com/DreambigOu/ELI5/tree/a766623b062331fdde53467001379b4ddf3acc2f)，保留上游正文和 MIT 许可证，并补充 Codex 元数据。 |
 | [`.gitignore`](.gitignore) | 忽略本地认证文件 `auth.json`。 |
@@ -44,6 +45,8 @@ cd codex-config
 ~/.codex/models.json   <- models/<profile>.json 安装后的目录
 ~/.codex/skills/write-todo/
                          <- skills/write-todo/
+~/.codex/skills/correct-course/
+                         <- skills/correct-course/
 ~/.codex/skills/record-incident/
                          <- skills/record-incident/
 ~/.codex/skills/score-incident/
@@ -143,7 +146,9 @@ jq -r '.models[].slug' "$HOME/.codex/models.json"
 
 ### 纠错模式
 
-将 `纠错模式` 作为指令发送，可在后面补充问题。Agent 会暂停推进和写入、保留现场，核对目标、事实与分歧，确认方向后再恢复。讨论或引用这个词不触发协议；普通纠正按其内容处理，不再通过感叹号或对情绪的猜测触发强制暂停。具体边界见 [`AGENTS.global.md`](AGENTS.global.md) §3.3。
+显式调用 `$correct-course` 进入[纠错模式](skills/correct-course/SKILL.md)，可在后面补充问题。Agent 会暂停推进和写入、保留现场，核对目标、事实与分歧，确认方向后再恢复。技能的显示名称为“纠错模式”，设置 `policy.allow_implicit_invocation: false`，仅显式调用时加载。
+
+普通补充、纠正和明确叫停仍按 [`AGENTS.global.md`](AGENTS.global.md) §3.2 处理；全局规则不再约定“纠错模式”四字的独立触发协议。维护时可运行 `python3 scripts/verify-rules-install.py --skill correct-course`，核对全局规则与技能的隔离安装副本。
 
 回答可以自然组织结果与分析，仍需简要表达对意图的理解。建议、问题和待决定事项可以穿插正文，但须在结尾集中编号列出，方便逐一回应；没有这些事项时不添加清单。
 

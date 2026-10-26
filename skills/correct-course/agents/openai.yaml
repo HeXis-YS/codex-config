@@ -1,0 +1,7 @@
+interface:
+  display_name: "纠错模式"
+  short_description: "显式调用后暂停任务、保留现场并核对目标与依据，确认方向后恢复"
+  default_prompt: "使用 $correct-course 进入纠错模式，先核对当前目标、事实与行动方向，再确认如何继续。"
+
+policy:
+  allow_implicit_invocation: false
