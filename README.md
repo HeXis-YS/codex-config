@@ -176,7 +176,7 @@ python3 scripts/verify-plan-tool.py
 
 ### 按模型选择补充约束
 
-[`avoid-overengineering`](skills/avoid-overengineering/SKILL.md) 可在已确认的 GPT 工程任务中匹配，也可由用户或运行配置选择，例如“使用 `$avoid-overengineering` 完成这次修复”。安装让模块可用，不代表所有模型都启用。模块控制附加机制与测试扩张；通用的授权、范围、风险和完成要求仍由全局规则提供。
+[`avoid-overengineering`](skills/avoid-overengineering/SKILL.md) 的入口描述要求 GPT 始终加载并遵循，不受任务类型限制；其他模型仅在用户或运行配置明确选用时加载，例如“使用 `$avoid-overengineering` 完成这次修复”。这是提示词层面的加载要求，实际是否加载仍取决于运行环境和模型执行。模块控制附加机制与测试扩张；通用的授权、范围、风险和完成要求仍由全局规则提供。
 
 用户反馈的问题在 GPT-5.6 上较为显著，GPT-6 尚未做详细测试；这不是跨模型效果结论。来源取舍、原规则迁移清单和验收场景见[设计依据](docs/agent-rule-rationale.md#9-将过度工程化约束拆为-gpt-补充模块)。维护时运行 `python3 scripts/verify-rules-install.py --skill avoid-overengineering` 核对全局规则与技能的隔离安装副本。
 
