@@ -11,6 +11,7 @@
 | [`AGENTS.global.md`](AGENTS.global.md) | 全局 Agent 规则的仓库源文件；安装时复制为 `~/.codex/AGENTS.md`。文件名带有 `.global`，使它不会在本仓库中作为项目级指令与 `AGENTS.md` 同时加载。 |
 | [`docs/agent-rule-rationale.md`](docs/agent-rule-rationale.md) | 全局规则及补充模块的设计依据、适用边界、取舍与复核场景，供维护规则时查阅；不会被安装。 |
 | [`docs/write-docs-rationale.md`](docs/write-docs-rationale.md) | 中英文文档能力的设计依据、参考材料取舍和复核场景；不会被安装。 |
+| [`docs/model-usage-feedback.md`](docs/model-usage-feedback.md) | 用户的模型使用评价、典型失败模式与选型偏好，区分使用反馈和转述；不会被安装。 |
 | [`models/`](models/) | 自定义模型目录。每个 JSON 文件都是一个 `{ "models": [...] }` 模型目录片段；安装时按所选 profile 把对应的一份安装为 `~/.codex/models.json`（默认 `deepseek.json`）；`openlux` 没有对应的文件，它的模型列表在安装时从 Codex CLI 现取。字段兼容性与验证方法见 [`models/README.md`](models/README.md)。 |
 | [`install.sh`](install.sh) | 将配置、全局规则、个人技能和模型目录安装到当前用户环境，并清理本仓库不再分发的旧 skill。 |
 | [`scripts/verify-rules-install.py`](scripts/verify-rules-install.py) | 全局规则与指定 skill 的隔离安装核对入口，比较安装副本并保留运行日志。 |
