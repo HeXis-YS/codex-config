@@ -175,6 +175,8 @@ python3 scripts/verify-plan-tool.py
 
 技术报告统一使用 `write-docs`，例如“为这些提交编写阶段总结”。它按需读取[技术报告参考](skills/write-docs/references/technical-reports.md)，覆盖缺陷修复、性能变化和阶段总结的证据、数据条件及结论边界；默认在对话中输出 Markdown，指定文件时写入文件。提示词的行为设计由 `write-prompt` 负责。能力组织、参考来源和验收边界见[设计依据](docs/write-docs-rationale.md)。
 
+[`write-prompt`](skills/write-prompt/SKILL.md) 用于编写、评审、重写和调试模型及 agent 提示词。它先确定任务与输出契约，再按问题选择示例、结构、模型适配和验证方法；创建时的参考来源及采用边界保留在[来源说明](docs/write-prompt-sources.md)，不作为安装后的运行依赖。
+
 ### 按模型选择补充约束
 
 [`constrain-opus`](skills/constrain-opus/SKILL.md) 仅要求 Claude Opus 5.5 始终加载，强调充分投入、遵守操作范围、依据证据报告及避免夸大成果；Fable 和其他模型仅在明确选用时加载。它替代原先面向所有 Claude 的 `deliver-thoroughly`，安装器会清理旧包。来源与适用边界见[模型使用反馈](docs/model-usage-feedback.md#与既有记录的关系)。这是提示词要求，尚未实测加载率或行为改善，不改变 Opus 5.5 当前仅推荐用于头脑风暴、文档和代码审计的使用评价。维护时运行 `python3 scripts/verify-rules-install.py --skill constrain-opus --retired-skill deliver-thoroughly` 核对安装及旧包清理。
