@@ -1,6 +1,6 @@
 interface:
   display_name: "记录事故"
-  short_description: "按用户提供的事实，将事故详情追加到 .codex/incidents.md"
+  short_description: "记录事故事实，区分记录者与造成事故的 Agent，并记录各自模型"
   default_prompt: "使用 $record-incident 将本次事故的客观事实追加到 .codex/incidents.md。"
 
 policy:
