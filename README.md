@@ -1,32 +1,33 @@
 # codex-config
 
-个人使用的 Codex 配置仓库。配置、全局 Agent 规则、个人技能和自定义模型目录都通过 Git 管理，便于持续迭代，并在新的环境中快速恢复相同的工作方式。
+个人使用的 Codex 配置仓库，用 Git 管理运行配置、全局 Agent 规则、模型目录和技能。通过同一个安装脚本，可在不同开发环境中恢复配置，或切换模型服务后端。
 
-## 仓库内容
+本仓库面向个人信任的开发容器或隔离沙箱。配置与安装脚本包含特定的权限、网络和 Git 设置；首次使用前请先阅读下节。
 
-| 路径 | 作用 |
-| --- | --- |
-| [`AGENTS.md`](AGENTS.md) | 本仓库的项目级开发规则，用于约束可分发配置、规则和技能的编写与审查；不会被安装。 |
-| [`config.toml`](config.toml) | 唯一的 Codex 全局配置：网页搜索开关、Memory、多 Agent 设置和模型目录指向；模型上下文窗口取自模型目录条目。`[model_providers.custom]` 是带占位符的 provider 模板，由 `install.sh` 按所选 profile 替换其中的 `name`、`base_url` 和 bearer token。 |
-| [`AGENTS.global.md`](AGENTS.global.md) | 全局 Agent 规则的仓库源文件；安装时复制为 `~/.codex/AGENTS.md`。文件名带有 `.global`，使它不会在本仓库中作为项目级指令与 `AGENTS.md` 同时加载。 |
-| [`docs/agent-rule-rationale.md`](docs/agent-rule-rationale.md) | 全局规则及补充模块的设计依据、适用边界、取舍与复核场景，供维护规则时查阅；不会被安装。 |
-| [`docs/write-docs-rationale.md`](docs/write-docs-rationale.md) | 中英文文档能力的设计依据、参考材料取舍和复核场景；不会被安装。 |
-| [`docs/model-usage-feedback.md`](docs/model-usage-feedback.md) | 用户的模型使用评价、典型失败模式与选型偏好，区分使用反馈和转述；不会被安装。 |
-| [`models/`](models/) | 自定义模型目录。每个 JSON 文件都是一个 `{ "models": [...] }` 模型目录片段；安装时按所选 profile 把对应的一份安装为 `~/.codex/models.json`（默认 `deepseek.json`）；`openlux` 没有对应的文件，它的模型列表在安装时从 Codex CLI 现取。字段兼容性与验证方法见 [`models/README.md`](models/README.md)。 |
-| [`install.sh`](install.sh) | 将配置、全局规则、个人技能和模型目录安装到当前用户环境，并清理本仓库不再分发的旧 skill。 |
-| [`scripts/verify-rules-install.py`](scripts/verify-rules-install.py) | 全局规则与指定 skill 的隔离安装核对入口，比较安装副本并保留运行日志。 |
-| [`scripts/verify-plan-tool.py`](scripts/verify-plan-tool.py) | 用真实 CLI 与本地 API 响应核对计划工具的配置开关及执行，不调用模型服务。 |
-| [`skills/`](skills/) | 随仓库版本化的个人技能；安装脚本会安装其中的全部 skill。 |
-| [`skills/correct-course/`](skills/correct-course/SKILL.md) | 仅显式调用的“纠错模式”，暂停任务并核对目标、事实与行动方向。 |
-| [`skills/avoid-overengineering/`](skills/avoid-overengineering/SKILL.md) | 面向 GPT 的过度工程化补充约束，控制无依据的抽象、防御逻辑、规则扩张和测试扩张。 |
-| [`skills/eli5/`](skills/eli5/) | 随仓库安装的 ELI5 技能，收录自 [DreambigOu/ELI5 的 a766623 提交](https://github.com/DreambigOu/ELI5/tree/a766623b062331fdde53467001379b4ddf3acc2f)，保留上游正文和 MIT 许可证，并补充 Codex 元数据。 |
-| [`.gitignore`](.gitignore) | 忽略本地认证文件 `auth.json`。 |
+## 安装前确认
 
-仓库会把 `custom` provider 的 bearer token 写进 `install.sh` 里各 profile 的 `experimental_bearer_token`（highgo 用的是占位值 `sbx-cs-highgo`），不再依赖环境变量；因此本仓库自身包含凭据，应作为私密仓库对待，不要公开分发或推送到公共远端。其余登录状态（`auth.json`）仍只保存在本机。
+当前 [config.toml](config.toml) 设置 `approval_policy = "never"` 和 `sandbox_mode = "danger-full-access"`。应由外层容器或沙箱提供所需隔离，不宜直接用于生产主机、不受信任的代码或含敏感数据的工作区。环境不同，应先调整配置。
 
-## 快速安装
+**安装会覆盖以下用户配置：**
 
-在目标环境中先安装 Codex CLI 并完成认证，然后执行：
+- `~/.codex/config.toml`、`AGENTS.md`、`models.json`，以及仓库技能中同名的安装文件。
+- 全局 Git 身份：`user.name = HeXis-YS`、`user.email = 40174982+HeXis-YS@users.noreply.github.com`。
+- 整个 `~/.config/git/ignore`，内容替换为单行 `.codex`。已有忽略项不会保留，请先备份，安装后按需合并。
+
+四个后端在 [install.sh](install.sh) 中都使用 `sbx-cs-*` 占位 token；搜索 MCP 的 `DEEPSEEK_API_KEY` 也是占位值。它们不代表有效凭据，不能据此认为官方端点可直接使用。使用前按实际后端配置认证，且不要将真实密钥提交到 Git。`auth.json` 已被仓库 [.gitignore](.gitignore) 忽略；占位值也不能证明 Git 历史中从未包含凭据。
+
+## 安装与切换后端
+
+### 前置条件
+
+安装脚本需要 Bash、Git、Codex CLI、`jq`，以及 `cp`、`install`、`mktemp` 等常见类 Unix 工具。
+
+- `codex` 和 `git` 必须在 `PATH` 中。脚本不安装或更新 Codex CLI。
+- 缺少 `jq` 时，脚本尝试通过 `apt-get` 安装，使用 root 或 `sudo` 权限；不具备这些条件时，需先手动安装。
+- 目标环境必须能够访问所选后端，并具备该后端要求的认证。
+- 若保留默认搜索 MCP，还需满足[搜索与代理](#搜索与代理)中的运行条件；安装脚本不安装这些依赖。
+
+### 执行安装
 
 ```bash
 git clone <repository-url> codex-config
@@ -34,197 +35,147 @@ cd codex-config
 ./install.sh
 ```
 
-之后用 `codex update` 刷新 CLI；本仓库不再分发 CLI 安装脚本。
-
-仓库只维护一份配置。安装时 `install.sh` 把 `config.toml` 里 `[model_providers.custom]` 模板的 `name`、`base_url` 和 bearer token 替换为所选后端的取值，并安装对应 profile 的模型列表。`--profile <name>` 可选 `deepseek`（默认，指向 `https://api.deepseek.com/`）、`highgo`（指向 `http://host.docker.internal:8080/v1/`，token 为占位值 `sbx-cs-highgo`）、`openlux`（指向 `https://api.openlux.ai/v1/`）或 `cc-switch`（指向 `http://host.docker.internal:15721/v1/`，token 为占位值 `sbx-cs-cc-switch`）。四种情况下 provider id 都是 `custom`，既有的会话记录不会失效。
-
-脚本使用当前用户的 `HOME`，安装结果位于：
-
-```text
-~/.codex/config.toml   <- config.toml（[model_providers.custom] 填入所选后端的 name、base_url 与 token）
-~/.codex/AGENTS.md     <- AGENTS.global.md
-~/.codex/models.json   <- models/<profile>.json 安装后的目录
-~/.codex/skills/write-todo/
-                         <- skills/write-todo/
-~/.codex/skills/correct-course/
-                         <- skills/correct-course/
-~/.codex/skills/record-incident/
-                         <- skills/record-incident/
-~/.codex/skills/score-incident/
-                         <- skills/score-incident/
-~/.codex/skills/write-prompt/
-                         <- skills/write-prompt/
-~/.codex/skills/write-docs/
-                         <- skills/write-docs/
-~/.codex/skills/eli5    <- skills/eli5/
-```
-
-### 前置条件
-
-- Bash、`cp`、`install`、`mktemp` 等常见类 Unix 工具。
-- `codex` 命令已安装并位于 `PATH` 中（之后用 `codex update` 刷新；新装后若当前 shell 仍找不到 `codex`，先打开新 shell）。
-- `git` 命令已安装并位于 `PATH` 中。
-- `jq`。若缺少 `jq`，脚本会在检测到 `apt-get` 时尝试使用 root 或 `sudo` 自动安装；其他系统请先手动安装。
-
-### 安装脚本的行为
-
-制品准备成功后，脚本会在安装阶段设置当前用户的全局 Git 身份：
-
-```text
-git config --global user.email "40174982+HeXis-YS@users.noreply.github.com"
-git config --global user.name "HeXis-YS"
-```
-
-这会覆盖已有的全局 Git 身份配置。
-
-`install.sh` 按以下顺序执行：
-
-1. 解析 profile，检查源文件、模板占位符、每个 skill 的正文及元数据，再检查依赖；缺少 `jq` 时按前置条件尝试安装。
-2. 在 `~/.codex/` 下创建独立暂存目录。用 `sed` 替换配置模板中的 provider 名称、URL 和 token，并检查占位符残留。
-3. 将所选 `models/<profile>.json` 复制到暂存目录并校验；`openlux` 在此阶段执行 `codex debug models --bundled`，现取 CLI 自带的官方目录。每次只准备一份模型目录，不进行合并。随后准备全局规则、代理辅助文件和全部本地 skill（包括 ELI5）。
-4. 全部制品准备成功后，安装配置、模型和全局规则，迁移并安装技能，然后设置 Git 身份及 `~/.config/git/ignore`。
-5. 清理本仓库已退役的 `analyze`、`write-code`、`use-git`、`write-lessons`、`write-report` 技能，以及旧的 `~/.codex/higress.config.toml`、`gateway.config.toml`、`models.gateway.json`、`models.higress.json` 和 `~/.local/bin/update-codex`。CLI 更新使用 `codex update`。
-6. 重启本地 app-server daemon，使其读取新配置与模型目录；无法重启时只打印警告，安装仍视为成功。
-
-准备阶段失败时，已有配置、模型、技能和 Git 用户配置保持原样；首次安装可能留下新建的 `~/.codex/` 空目录。暂存目录在成功、错误退出或收到 HUP、INT、TERM 信号时清理。配置和模型使用同一文件系统内的重命名完成单文件原子替换；安装阶段仍逐项写入，后续写入失败可能留下部分更新。
-
-> 如果检测到旧的 `~/.agents/skills/`，脚本会将本仓库管理的技能和 ELI5 迁移到 `~/.codex/skills/`；其他未管理的技能不会被删除。
-
-> **注意：** 当前脚本会用单行 `.codex` 覆盖整个 `~/.config/git/ignore`，不会保留其中原有的全局忽略规则。运行前请检查并备份该文件；如果依赖其他全局忽略项，请在安装后恢复或合并它们。
-
-## 验证安装
-
-```bash
-test "$(git config --global user.email)" = "40174982+HeXis-YS@users.noreply.github.com"
-test "$(git config --global user.name)" = "HeXis-YS"
-test ! -e "$HOME/.local/bin/update-codex"
-test -f "$HOME/.codex/config.toml"
-grep -q '^model_provider = "custom"$' "$HOME/.codex/config.toml"
-test "$(grep -c '^\[model_providers\.' "$HOME/.codex/config.toml")" = 1
-test ! -e "$HOME/.codex/higress.config.toml"
-test ! -e "$HOME/.codex/models.higress.json"
-test -f "$HOME/.codex/AGENTS.md"
-cmp AGENTS.global.md "$HOME/.codex/AGENTS.md"
-test -f "$HOME/.codex/skills/write-todo/SKILL.md"
-test -f "$HOME/.codex/skills/record-incident/SKILL.md"
-test -f "$HOME/.codex/skills/score-incident/SKILL.md"
-test -f "$HOME/.codex/skills/write-prompt/SKILL.md"
-test -f "$HOME/.codex/skills/write-docs/SKILL.md"
-test -f "$HOME/.codex/skills/eli5/SKILL.md"
-test ! -e "$HOME/.codex/skills/analyze" && test ! -L "$HOME/.codex/skills/analyze"
-test ! -e "$HOME/.codex/skills/write-code" && test ! -L "$HOME/.codex/skills/write-code"
-test ! -e "$HOME/.codex/skills/use-git" && test ! -L "$HOME/.codex/skills/use-git"
-test ! -e "$HOME/.codex/skills/write-lessons" && test ! -L "$HOME/.codex/skills/write-lessons"
-test ! -e "$HOME/.codex/skills/write-report" && test ! -L "$HOME/.codex/skills/write-report"
-test ! -e "$HOME/.agents/skills/write-report" && test ! -L "$HOME/.agents/skills/write-report"
-jq -r '.models[].slug' "$HOME/.codex/models.json"
-```
-
-安装脚本分发的自定义模型：
-
-| 模型列表 | 对应 profile 与端点 | 模型 |
-| --- | --- | --- |
-| `models/deepseek.json` | 默认（`custom` 指向 `https://api.deepseek.com/`） | `deepseek-flash` |
-| `models/highgo.json` | `--profile highgo`（`custom` 指向 `http://host.docker.internal:8080/v1/`） | `deepseek-v4.1-flash`、`ccs-highgo/ZHIPU/GLM-5.3-Flash` |
-| `openlux`（仓库中无文件，安装时生成） | `--profile openlux`（`custom` 指向 `https://api.openlux.ai/v1/`） | 安装时执行 `codex debug models --bundled`；当前 CLI 0.162.0 返回 11 个官方模型：`gpt-6.1-sol`、`gpt-6-astra`、`gpt-6-sol`、`gpt-6-luna`、`gpt-5.6-sol`、`gpt-5.6-terra`、`gpt-5.6-luna`、`gpt-5.5`、`gpt-daybreak-blue-latest`、`gpt-daybreak-red-latest`、`codex-auto-review` |
-| `models/cc-switch.json` | `--profile cc-switch`（`custom` 指向 `http://host.docker.internal:15721/v1/`） | `gpt-6-luna`、`gpt-6.1-sol`、`gpt-6-astra`、`ccs-openlux-claude/claude-opus-5-5`、`ccs-openlux-claude/claude-fable-5-1`、`ccs-deepseek/deepseek-flash` |
-
-配置里不写 `model` 与 `model_reasoning_effort`：默认模型随所装的模型列表变化，取其中 `priority` 最小的条目（`deepseek.json` → `deepseek-flash`，`highgo.json` → `deepseek-v4.1-flash`，`openlux.json` → `gpt-6.1-sol`，`cc-switch.json` → `gpt-6-luna`）。所以端点和模型列表必须成套更换，`--profile` 做的正是这件事。
-
-该端点的 `/v1/models` 仍列出 4 个 slug，但字段由网关自行填充（`comp_hash` 取 `cc-switch` 等网关自有值），不能直接作为模型目录，`models/highgo.json` 因此手工维护：DeepSeek 条目取自 `models/deepseek.json` 的唯一条目（只改 `slug` 与 `display_name`，其余字段逐字段一致），GLM 条目按当前 CLI 模型目录的字段结构维护。GLM 的 slug 使用网关的聚合名 `ccs-<provider>/<model>`，前缀必须与 CC Switch 当前的 provider 命名一致。该端点本身不校验 Authorization 头，因此 `[model_providers.custom]` 不声明 `env_key`（声明后 Codex 会因缺少环境变量而拒绝启动），token 只登记占位值 `sbx-cs-highgo`，不代表真实权限；模型能否真正返回由 CC Switch 上游的配额与密钥状态决定。切到该后端：
+默认使用 `deepseek`。切换后端时重新运行安装脚本：
 
 ```bash
 ./install.sh --profile highgo
+./install.sh --profile openlux
+./install.sh --profile cc-switch
 ```
 
-`openlux` profile 在仓库里没有模型文件：每次安装都用 `codex debug models --bundled` 从当前 CLI 读取官方目录，所以不存在快照过期的问题，模型清单始终与安装的 CLI 版本一致。清单是 CLI 自带目录原样，不是 OpenLux 端点自报的模型；`https://api.openlux.ai/v1/models` 与 `/v1/responses` 在沙箱内用仓库里的 key 请求都返回 401（`Invalid token`），所以这个 profile 的端到端可用性还没有实测证据。
+每次安装将后端地址、认证值与模型目录成套替换；所有后端的 provider ID 均为 `custom`。脚本按当前 `HOME` 确定安装位置，不根据 `CODEX_HOME` 改变目标目录。
 
-`cc-switch` profile 使用 `models/cc-switch.json` 中的 6 个聚合模型，安装命令为 `./install.sh --profile cc-switch`。2026-10-21 已在临时 `HOME` 与 `CODEX_HOME` 中通过真实请求验证默认模型 `gpt-6-luna`：`codex exec` 让 shell 执行了 `echo tool-ok` 并返回 `tool-ok`，没有把工具调用渲染成文本。该端点的 `/v1/models` 当时另列出 `ccs-deepseek/deepseek-v4-pro`，但仓库预设未包含该条目；其余非默认模型尚未逐一做端到端验证。
+| Profile | 服务地址 | 模型目录来源 |
+| --- | --- | --- |
+| `deepseek`（默认） | `https://api.deepseek.com/` | [models/deepseek.json](models/deepseek.json)：`deepseek-flash` |
+| `highgo` | `http://host.docker.internal:8080/v1/` | [models/highgo.json](models/highgo.json)：`deepseek-v4.1-flash`、`ccs-highgo/ZHIPU/GLM-5.3-Flash` |
+| `openlux` | `https://api.openlux.ai/v1/` | 每次安装执行 `codex debug models --bundled`，读取当前 CLI 自带的目录 |
+| `cc-switch` | `http://host.docker.internal:15721/v1/` | [models/cc-switch.json](models/cc-switch.json)：GPT、Claude 和 DeepSeek 的六个预设条目 |
 
-## 日常迭代与迁移
+配置不固定 `model` 或 `model_reasoning_effort`，默认模型按目录中较小的 `priority` 值选择。三个仓库目录的首选模型分别是 `deepseek-flash`、`deepseek-v4.1-flash` 和 `gpt-6-luna`；OpenLux 随所安装 CLI 的目录变化。
 
-修改配置、规则、`skills/` 或 `models/*.json` 后提交 Git；在其他环境执行 `git pull` 后重新运行 `./install.sh` 即可同步。重新安装会覆盖上述 `~/.codex` 文件和 `skills/` 中同名的用户级 skill，并只安装所选 profile 的那一份模型列表。
+OpenLux 不在仓库保存模型快照，也不从服务端的 `/v1/models` 生成目录。CLI 自带清单不证明相应后端支持其中全部模型。HighGo 的网关模型名需要与实际 provider 命名一致；其 DeepSeek 条目的提示词字段与默认 DeepSeek 目录不同，不能视为仅改名的副本。
 
-### 纠错模式
+**安装成功只证明文件已分发，不证明后端能够返回结果或正确执行工具。** 已有后端兼容问题及历史验证范围见 [models/README.md](models/README.md)。其中 CC Switch 默认模型有 2026-10-21 的工具调用验证记录，其他模型未全部验证；OpenLux 仅有历史请求返回 401 的记录。这些记录不能作为后端当前可用性的保证。
 
-显式调用 `$correct-course` 进入[纠错模式](skills/correct-course/SKILL.md)，可在后面补充问题。Agent 会暂停推进和写入、保留现场，核对目标、事实与分歧，确认方向后再恢复。技能的显示名称为“纠错模式”，设置 `policy.allow_implicit_invocation: false`，仅显式调用时加载。
+### 安装结果
 
-普通补充、纠正和明确叫停仍按 [`AGENTS.global.md`](AGENTS.global.md) §3.2 处理；全局规则不再约定“纠错模式”四字的独立触发协议。维护时可运行 `python3 scripts/verify-rules-install.py --skill correct-course`，核对全局规则与技能的隔离安装副本。
+| 仓库来源 | 安装位置 |
+| --- | --- |
+| `config.toml`，按 profile 填入 provider 参数 | `~/.codex/config.toml` |
+| `AGENTS.global.md` | `~/.codex/AGENTS.md` |
+| 所选模型目录 | `~/.codex/models.json` |
+| `skills/<name>/` 中的全部文件 | `~/.codex/skills/<name>/` |
+| `proxy-setup.cjs`（源文件存在时） | `~/.codex/proxy-setup.cjs` |
 
-回答可以自然组织结果与分析，仍需简要表达对意图的理解。建议、问题和待决定事项可以穿插正文，但须在结尾集中编号列出，方便逐一回应；没有这些事项时不添加清单。
+根目录 `AGENTS.md` 是本仓库的开发规则，不会安装。`README.md`、`docs/` 和维护脚本也不随安装器分发。
 
-### 会话计划与任务交接
+脚本先检查输入与依赖，再在 `~/.codex/` 下暂存全部制品。准备成功后依次安装文件与技能、设置 Git 配置、清理旧文件，最后执行 `codex app-server daemon restart`。重启失败只打印警告，不将已完成的文件安装判为失败。
 
-`config.toml` 显式设置 `tools.update_plan.enabled = true`。需要协调步骤和进度时使用会话内计划；短任务无需建计划。已有会话是否提供该工具以实际工具列表为准，修改配置不代表当前会话立即获得工具。
+准备阶段失败时，已有配置、模型、技能和 Git 用户配置保持原样；首次安装可能留下新建的空目录。暂存目录在成功、错误退出或收到 HUP、INT、TERM 时清理。配置、模型和全局规则逐文件原子替换，整个安装不是一次原子操作；安装阶段失败可能留下部分更新。
 
-`.codex/todo.md` 用于跨会话交接或需要持久保存恢复依据的关键检查点。通过 `$write-todo` 保存目标、范围、当前状态、唯一下一动作和证据位置，在变化影响恢复时更新。它不逐步复制计划，短任务也无需补写完成档案；上下文压缩只有在关键依据可能丢失时才需要保存快照。现有历史保留，不为新格式重写旧记录。
+### 旧安装迁移
 
-同一会话恢复时先核对计划与上下文；新会话或接手任务时定位相关交接条目，再以最新指令、工作区和运行证据核对。事故记录仅在用户要求记录、评分或集中复盘时按对象处理，不作为日常启动或恢复输入，也不自动生成项目规则。`.codex/` 仍是本地工作流目录，不提交到仓库。职责与写入边界见全局规则 §6、§7.2 及[设计依据](docs/agent-rule-rationale.md)。
+仓库管理的技能从 `~/.agents/skills/` 迁移到 `~/.codex/skills/`。若新位置已有同名技能，旧位置的副本会被删除，再安装仓库文件；未管理的其他技能不会因此删除。技能安装采用复制覆盖，同名文件会更新，目标目录中额外存在的文件不会统一清空。
 
-维护计划工具配置时，可运行：
+安装器从新旧技能目录清理已退役的 `analyze`、`write-code`、`use-git`、`write-lessons`、`write-report` 和 `deliver-thoroughly`，并移除以下旧文件：
+
+- `~/.codex/higress.config.toml`、`gateway.config.toml`。
+- `~/.codex/models.gateway.json`、`models.higress.json`。
+- `~/.local/bin/update-codex`。CLI 更新改用 `codex update`。
+
+## 配置与技能
+
+### 全局规则与工作记录
+
+[AGENTS.global.md](AGENTS.global.md) 定义协作、实施、验证、工作区保护和交付边界；规则动机与取舍见[设计依据](docs/agent-rule-rationale.md)。安装后的 `~/.codex/AGENTS.md` 是全局生效副本，仓库根目录 [AGENTS.md](AGENTS.md) 只约束本仓库维护。
+
+通用规则要求减少无意义、重复的提问，同时将未确定的需求、取舍和授权交给用户决定。文档对行为或实现约定的描述与代码冲突时，以代码为准，并逐项报告发现的不匹配。
+
+配置显式启用 `memories`、`multi_agent_v2` 和 `tools.update_plan.enabled`。会话计划用于协调当前工作；`.codex/todo.md` 用于跨会话交接及需要持久保存恢复依据的检查点，不逐步复制计划。当前会话能否调用 `update_plan`，仍以实际工具列表为准。
+
+事故记录按明确请求处理，不作为日常启动或恢复输入，也不自动生成项目规则。`.codex/` 存放本地工作记录与验证输出，默认不提交。模型专用模块的更严格要求按其适用范围执行。
+
+### 可用技能
+
+安装器分发 [skills/](skills/) 下的全部技能。每个包包含 `SKILL.md`、`agents/openai.yaml` 和必要资源。
+
+| 技能 | 用途与调用方式 |
+| --- | --- |
+| [write-docs](skills/write-docs/SKILL.md) | 撰写、改写、翻译与审校中英文文档、注释、报告和说明。可显式调用 `$write-docs`；不因普通任务包含文字输出就自动启用。 |
+| [write-prompt](skills/write-prompt/SKILL.md) | 编写、评审、重写或调试模型与 Agent 提示词，处理示例、结构和输出要求。 |
+| [eli5](skills/eli5/SKILL.md) | 按指定读者的理解水平解释概念、代码或错误。 |
+| [write-todo](skills/write-todo/SKILL.md) | 创建或更新交接笔记，保存目标、授权、状态、下一动作及恢复依据。 |
+| [correct-course](skills/correct-course/SKILL.md) | 仅显式调用 `$correct-course`：暂停推进与写入、保留现场、核对目标和事实，确认方向后恢复。 |
+| [record-incident](skills/record-incident/SKILL.md) | 仅显式调用：记录客观事故事实，区分记录者与造成事故的 Agent；各 Agent 的会话 ID 和模型写在同一行。 |
+| [score-incident](skills/score-incident/SKILL.md) | 仅显式调用：按风险与影响评分，记录评分者身份和模型；确认并写入评分后，将事故改为“已评分”。 |
+| [avoid-overengineering](skills/avoid-overengineering/SKILL.md) | 要求 GPT 始终加载：防止移除功能后追加永久禁令或测试，并约束无依据的新增测试。 |
+| [constrain-opus](skills/constrain-opus/SKILL.md) | 仅要求 Opus 5.5 始终加载：约束文件编辑、审批、问题处理、任务记录、验证和报告；强制条款优先于既定全局规则。 |
+
+模型专用模块对其他模型仅在明确选用时加载。加载要求属于提示词约束，不能保证实际加载或遵循，也不能覆盖系统与 harness 的强制限制；未进行模型行为效果实测。Opus 模块替代原先面向所有 Claude 的 `deliver-thoroughly`，Fable 不再自动加载。当前使用评价仍只推荐 Opus 5.5 用于头脑风暴、文档和代码审计，详见[模型使用反馈](docs/model-usage-feedback.md)。
+
+技术报告统一由 `write-docs` 处理，包括缺陷修复、性能变化和阶段总结；中英文共用语义审查流程，按需读取语言和文体参考。设计来源见[文档能力依据](docs/write-docs-rationale.md)和[提示词技能来源](docs/write-prompt-sources.md)。
+
+ELI5 收录自 [DreambigOu/ELI5 的 a766623 提交](https://github.com/DreambigOu/ELI5/tree/a766623b062331fdde53467001379b4ddf3acc2f)，保留上游正文与 [MIT 许可证](skills/eli5/LICENSE)，并补充 Codex 元数据。
+
+### 搜索与代理
+
+`config.toml` 声明 provider 支持独立网页搜索，并配置 `ds-websearch-mcp`，由 `npx -y ds-websearch-mcp` 启动。后者需要 Node.js、`npx`、可用的服务认证，以及能被预加载脚本解析到的 `undici` 模块。
+
+MCP 的 `NODE_OPTIONS` 当前写为 `--require /home/agent/.codex/proxy-setup.cjs`。安装器实际复制到 `$HOME/.codex/proxy-setup.cjs`；在其他用户目录下使用时，需先调整模板中的绝对路径。
+
+[proxy-setup.cjs](proxy-setup.cjs) 在 `HTTP_PROXY` 和 `HTTPS_PROXY` 均未设置时，默认使用 `http://gateway.docker.internal:3128`，并设置本地地址的 `NO_PROXY`。存在代理配置时，脚本通过 `undici.EnvHttpProxyAgent` 设置全局 dispatcher。目标环境需要能够访问该代理，或预先配置适用的代理设置；不使用该 MCP 时可从配置模板中移除相应段落。
+
+## 日常维护
+
+修改仓库文件后检查差异并提交。在其他环境拉取后重新安装，并显式选择所需 profile：
 
 ```bash
+git pull
+./install.sh --profile cc-switch
+```
+
+不带 `--profile` 会重新使用默认 DeepSeek，不会沿用上一次选择。
+
+更新 CLI 使用 `codex update`。安装器的 daemon 重启用于加载配置；需要把当前 CLI 包用于 daemon 时，使用 `codex app-server daemon update --from-cli`，这可能中断运行中的工作。查看 CLI 与 daemon 版本可运行 `codex app-server daemon version`。
+
+模型目录的顶层结构为 `{ "models": [...] }`，条目使用唯一的非空 `slug`。实际可用条目还需要上下文窗口、推理等级、工具能力和服务端兼容字段；以现有目录及 [models/README.md](models/README.md) 为维护依据。安装器只校验基础结构，不能保证服务端兼容性，也不会自动合并多个目录。
+
+### 核对安装结果
+
+实际安装后，可检查全局规则副本和已安装模型：
+
+```bash
+cmp AGENTS.global.md "$HOME/.codex/AGENTS.md"
+jq -r '.models[].slug' "$HOME/.codex/models.json"
+```
+
+维护制品时使用仓库内的隔离验证入口，不必反复覆盖当前用户环境：
+
+```bash
+# 全局规则与工具配置
+python3 scripts/verify-rules-install.py
+
+# 同时核对指定技能；--skill 可重复
+python3 scripts/verify-rules-install.py --skill record-incident --skill score-incident
+
+# 核对新技能及旧包清理；--retired-skill 可重复
+python3 scripts/verify-rules-install.py --skill constrain-opus --retired-skill deliver-thoroughly
+
+# 四种 profile、安装产物、迁移和失败处理
+python3 scripts/verify-rules-install.py --installer
+
+# 计划工具的配置开关与一次实际工具执行
 python3 scripts/verify-plan-tool.py
 ```
 
-需要 Python 3.11+ 和 Codex。入口使用隔离配置、仓库默认模型目录和本地 API 响应，核对真实 CLI 是否按开关提供 `update_plan`，并执行一次计划更新；日志保存在 `.codex/runs/plan-tool-*.log`，临时状态在结束后清理。它不调用模型服务，也不验证模型规划质量或上下文压缩后的恢复效果。
+`verify-rules-install.py` 需要 Python 3.11+、Bash、Git、`jq` 和 Codex。它在隔离用户目录中运行 `install.sh`、拦截 daemon 重启，核对全局规则及指定技能的文件内容，结束后清理临时安装。日志包含工具版本、代码版本、工作区差异指纹及原始输出，保存在 `.codex/runs/rules-install-*.log`。
 
-### 文档与说明性文字
+`--installer` 还核对真实 CLI 是否接受配置、文件权限、旧路径迁移、准备失败时旧文件保留，以及 daemon 重启失败仅警告。可加 `--baseline <Git引用>`，以当前制品为相同输入比较指定版本安装器的配置、模型与全局规则输出。OpenLux 使用真实 CLI 当次提供的 bundled 目录作为验证输入。
 
-[`write-docs`](skills/write-docs/SKILL.md) 用于中英文技术文档、注释、报告、规则说明和面向用户文字的撰写、翻译与审校。它共用语义保真和审校流程，按需读取中文、英文及文体参考；普通任务不会仅因有文字输出就自动启用。可以直接调用 `$write-docs`，例如“用中文改写这份安装指南”或“Review this English README for clarity”。
+`verify-plan-tool.py` 需要 Python 3.11+ 和 Codex，使用本地 API 响应核对工具开关及执行，日志保存在 `.codex/runs/plan-tool-*.log`。它不调用模型服务，也不验证规划质量或上下文压缩后的恢复能力。安装验证同样不能代替模型端到端验证。
 
-技术报告统一使用 `write-docs`，例如“为这些提交编写阶段总结”。它按需读取[技术报告参考](skills/write-docs/references/technical-reports.md)，覆盖缺陷修复、性能变化和阶段总结的证据、数据条件及结论边界；默认在对话中输出 Markdown，指定文件时写入文件。提示词的行为设计由 `write-prompt` 负责。能力组织、参考来源和验收边界见[设计依据](docs/write-docs-rationale.md)。
-
-[`write-prompt`](skills/write-prompt/SKILL.md) 用于编写、评审、重写和调试模型及 agent 提示词。它先确定任务与输出契约，再按问题选择示例、结构、模型适配和验证方法；创建时的参考来源及采用边界保留在[来源说明](docs/write-prompt-sources.md)，不作为安装后的运行依赖。
-
-### 按模型选择补充约束
-
-[`constrain-opus`](skills/constrain-opus/SKILL.md) 仅要求 Claude Opus 5.5 始终加载，强调充分投入、遵守操作范围、依据证据报告及避免夸大成果；Fable 和其他模型仅在明确选用时加载。它替代原先面向所有 Claude 的 `deliver-thoroughly`，安装器会清理旧包。来源与适用边界见[模型使用反馈](docs/model-usage-feedback.md#与既有记录的关系)。这是提示词要求，尚未实测加载率或行为改善，不改变 Opus 5.5 当前仅推荐用于头脑风暴、文档和代码审计的使用评价。维护时运行 `python3 scripts/verify-rules-install.py --skill constrain-opus --retired-skill deliver-thoroughly` 核对安装及旧包清理。
-
-[`avoid-overengineering`](skills/avoid-overengineering/SKILL.md) 的入口描述要求 GPT 始终加载并遵循，不受任务类型限制；其他模型仅在用户或运行配置明确选用时加载，例如“使用 `$avoid-overengineering` 完成这次修复”。这是提示词层面的加载要求，实际是否加载仍取决于运行环境和模型执行。模块约束移除功能后擅自追加禁令或测试的行为，并提供新增测试的具体判断依据；复用、抽象、兼容、防御逻辑、失败处理和验证证据等通用工程要求由全局规则提供，对所有模型生效。
-
-用户反馈的问题在 GPT-5.6 上较为显著，GPT-6 尚未做详细测试；这不是跨模型效果结论。来源取舍、原规则迁移清单和验收场景见[设计依据](docs/agent-rule-rationale.md#9-将过度工程化约束拆为-gpt-补充模块)。维护时运行 `python3 scripts/verify-rules-install.py --skill avoid-overengineering` 核对全局规则与技能的隔离安装副本。
-
-### 模型与环境迁移
-
-新增模型时，保持文件结构为：
-
-```json
-{
-  "models": [
-    {
-      "slug": "example-model"
-    }
-  ]
-}
-```
-
-实际模型条目通常还需要完整的上下文窗口、推理等级、工具能力和服务端兼容性字段；可参考 [`models/deepseek.json`](models/deepseek.json)。每个 `slug` 应唯一；安装脚本按所选 profile 读取对应的 `models/<profile>.json`。字段兼容性约束与验证方法见 [`models/README.md`](models/README.md)。
-
-迁移到新环境的最小流程是：安装 Codex CLI、完成认证、克隆本仓库、运行安装脚本。模型服务地址由 `--profile` 决定，端点数据在 [`install.sh`](install.sh)：默认指向 `https://api.deepseek.com/`，bearer token 写死在 deepseek 的 profile 字段；`--profile highgo` 指向 `http://host.docker.internal:8080/v1/`，该端点不鉴权，token 写占位值 `sbx-cs-highgo`；`--profile openlux` 指向 `https://api.openlux.ai/v1/`，bearer token 写在 openlux 的 profile 字段，模型清单在安装时从 CLI 现取；`--profile cc-switch` 指向 `http://host.docker.internal:15721/v1/`，token 写占位值 `sbx-cs-cc-switch`。目标环境必须能够访问所选端点的服务。技能安装到 `~/.codex/skills/`，由 Codex 从该目录发现。
-
-## 配置要点与安全边界
-
-当前配置有意开启了较高权限：
-
-- `approval_policy = "never"`
-- `sandbox_mode = "danger-full-access"`
-- full-access 沙箱下使用默认的 live web search
-- 显式启用 memories 和 multi-agent v2；goals 与 multi-agent 使用 Codex 默认值
-
-这适合个人信任的开发容器或隔离环境，不适合直接用于不受信任的代码、生产主机或含敏感数据的工作区。若环境风险不同，应先调整 `config.toml`，再运行安装脚本。
-
-`auth.json` 仅保留在本机，不要强制添加。`install.sh` 现在把 `custom` provider 的 bearer token 写死在四个 profile 的 `experimental_bearer_token` 并随仓库提交；其中 highgo 的 `sbx-cs-highgo` 与 cc-switch 的 `sbx-cs-cc-switch` 是占位值、不是可用凭据，真实凭据是 deepseek 与 openlux 两个，因此本仓库含有两个凭据，应按私密仓库处理，不要公开分发或推送到公共远端；token 轮换或泄露时更新对应字段。除此之外不要把其他 API 密钥写入模型 JSON 或 Git 历史。
-
-## 故障排查
-
-- `codex command was not found`：先按官方方式安装 Codex CLI，并在运行脚本的 shell 中确认 `command -v codex`（新装后可能需要新 shell 刷新 PATH）。
-- `could not restart the app-server daemon`：CLI 与配置已安装完成，只是 daemon 未重启，可用 `codex app-server daemon version` 查看状态。`restart` 只重启现有守护进程（没有在运行的 daemon 时会安装并启动一个），不更换 daemon 已固定的包版本；需要换版本时用 `codex app-server daemon update --from-cli`。
-- `jq is missing`：在没有 `apt-get` 或没有 root/`sudo` 的环境中，先手动安装 `jq`。
-- `invalid model catalog fragment`：检查对应 JSON 是否合法，且顶层存在 `models` 数组，数组中每个条目都有非空字符串 `slug`。
-- 安装后出现其他全局 Git 忽略规则丢失：从安装前的备份恢复 `~/.config/git/ignore`，并保留其中的 `.codex` 条目。
-
-提交前可运行最小检查：
+提交前按改动运行必要检查；安装器或模型目录变化时可使用：
 
 ```bash
 bash -n install.sh
@@ -232,21 +183,21 @@ jq -e '.models | type == "array" and all(.[]; (.slug | type) == "string" and (.s
 git diff --check
 ```
 
-## 隔离安装核对
+## 故障排查
 
-修改全局规则或 skill 后，根据需要选择核对范围：
+| 现象 | 检查与处理 |
+| --- | --- |
+| 找不到 `codex` 或 `git` | 安装相应工具，确认命令位于 `PATH`；新安装后可重新打开 shell。 |
+| `jq is missing` | 确认有 `apt-get` 和 root 或 `sudo` 权限，否则手动安装 `jq`。 |
+| `invalid model catalog fragment` | 检查模型 JSON 顶层及条目结构；OpenLux 还需确认 CLI 能输出 bundled 目录。 |
+| daemon 重启警告 | 文件安装已完成。检查 `codex app-server daemon version` 与 daemon 状态，处理后再重启。 |
+| 后端返回 401，或工具调用变成普通文本 | 先核对认证及后端模型支持，再参照 [models/README.md](models/README.md) 检查工具兼容字段；安装退出码为 0 不能证明工具调用成功。 |
+| MCP 提示预加载文件或 `undici` 不存在 | 核对 `NODE_OPTIONS` 的绝对路径、脚本是否安装，以及 Node.js 能否解析 `undici`。 |
+| 全局 Git 身份或忽略规则被覆盖 | 按安装前的备份恢复所需设置；忽略文件中按需保留 `.codex`。 |
 
-```bash
-# 核对全局规则
-python3 scripts/verify-rules-install.py
-# 核对全局规则与指定 skill
-python3 scripts/verify-rules-install.py --skill write-docs
-# 同时验证已退役 skill 的清理
-python3 scripts/verify-rules-install.py --skill write-docs --retired-skill write-report
-# 核对四种 profile、安装产物、旧路径迁移和准备阶段故障
-python3 scripts/verify-rules-install.py --installer
-```
+## 仓库维护资料
 
-需要 Python 3.11+、Bash、Git、jq 和 Codex。入口默认以仓库根目录运行 `install.sh --profile deepseek`，仅为安装子进程设置隔离的用户目录和 Git 全局配置，并拦截 daemon 重启；运行后清理临时安装。它记录工具版本、代码版本、工作区差异指纹和原始输出到 `.codex/runs/rules-install-*.log`，核对安装后的 `AGENTS.md` 与仓库源文件逐字节一致，以及工具配置是否完整保留。`--skill <名称>` 还核对指定 skill 的文件清单和逐字节内容；`--retired-skill <名称>` 在隔离环境中预置旧包，检查当前与旧安装目录中的清理结果，以及无关技能是否保留。两个参数都可重复传入。该核对覆盖制品分发；模型对规则与 skill 的实际遵循情况需要另外验证。
-
-`--installer` 扩大为四种 profile 的核对：检查配置、模型、规则、技能、文件权限和真实 CLI 对配置的接受情况，并验证旧路径迁移、准备失败时旧文件保留、临时目录清理及 daemon 重启失败仅警告。可附加 `--baseline <Git引用>`，以当前仓库制品为相同输入，对比指定版本安装器生成的配置、模型和全局规则。OpenLux 验证使用真实 CLI 现取的 bundled 目录作为固定输入，记录目录指纹，并检查安装器调用该命令。
+- [AGENTS.md](AGENTS.md)：本仓库的开发与制品维护规则。
+- [全局规则设计依据](docs/agent-rule-rationale.md)：来源、适用边界、历史取舍和复核场景。
+- [模型使用反馈](docs/model-usage-feedback.md)：实际使用评价、转述及证据限制。
+- [Opus 5.5 事故摘要](docs/opus-5.5-security-incident.md)：脱敏事实、影响及未知项。
