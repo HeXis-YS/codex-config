@@ -177,7 +177,7 @@ python3 scripts/verify-plan-tool.py
 
 ### 按模型选择补充约束
 
-[`deliver-thoroughly`](skills/deliver-thoroughly/SKILL.md) 要求 Claude 始终加载，强调质量优先、充分投入 token、完整交付和如实报告；其他模型可由用户或运行配置明确选用。来源与适用边界见[模型使用反馈](docs/model-usage-feedback.md#token-投入与质量偏好)。这是提示词要求，尚未实测加载率或行为改善；维护时运行 `python3 scripts/verify-rules-install.py --skill deliver-thoroughly` 核对安装副本。
+[`constrain-opus`](skills/constrain-opus/SKILL.md) 仅要求 Claude Opus 5.5 始终加载，强调充分投入、遵守操作范围、依据证据报告及避免夸大成果；Fable 和其他模型仅在明确选用时加载。它替代原先面向所有 Claude 的 `deliver-thoroughly`，安装器会清理旧包。来源与适用边界见[模型使用反馈](docs/model-usage-feedback.md#与既有记录的关系)。这是提示词要求，尚未实测加载率或行为改善，不改变 Opus 5.5 当前仅推荐用于头脑风暴、文档和代码审计的使用评价。维护时运行 `python3 scripts/verify-rules-install.py --skill constrain-opus --retired-skill deliver-thoroughly` 核对安装及旧包清理。
 
 [`avoid-overengineering`](skills/avoid-overengineering/SKILL.md) 的入口描述要求 GPT 始终加载并遵循，不受任务类型限制；其他模型仅在用户或运行配置明确选用时加载，例如“使用 `$avoid-overengineering` 完成这次修复”。这是提示词层面的加载要求，实际是否加载仍取决于运行环境和模型执行。模块约束移除功能后擅自追加禁令或测试的行为，并提供新增测试的具体判断依据；复用、抽象、兼容、防御逻辑、失败处理和验证证据等通用工程要求由全局规则提供，对所有模型生效。
 

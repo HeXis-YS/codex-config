@@ -1,0 +1,4 @@
+interface:
+  display_name: "Opus 5.5 执行与报告约束"
+  short_description: "约束 Opus 5.5 的文件编辑、操作审批、问题处理、任务记录及验证报告"
+  default_prompt: "使用 $constrain-opus 处理当前任务，遵循强制操作边界，持续记录任务，遇到问题立即反馈，并在测试和审查后如实交付。"

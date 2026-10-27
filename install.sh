@@ -270,7 +270,7 @@ main() {
     skills_source_dir="$script_dir/skills"
     legacy_skills_install_dir="$HOME/.agents/skills"
     skills_install_dir="$codex_dir/skills"
-    retired_skills=(analyze write-code use-git write-lessons write-report)
+    retired_skills=(analyze write-code use-git write-lessons write-report deliver-thoroughly)
     staging_dir=""
     trap cleanup EXIT
     trap 'exit 129' HUP

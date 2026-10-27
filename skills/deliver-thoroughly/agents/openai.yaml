@@ -1,4 +1,0 @@
-interface:
-  display_name: "Claude 充分投入与完整交付"
-  short_description: "要求 Claude 充分投入 token，以质量和任务完成优先，并如实报告成果"
-  default_prompt: "使用 $deliver-thoroughly 完成当前任务，不吝啬必要的 token 投入，完整交付并如实报告结果。"
