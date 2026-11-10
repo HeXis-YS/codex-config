@@ -12,10 +12,13 @@ model_catalog_json = "~/.codex/models.json"
 
 [features]
 memories = true
-multi_agent_v2 = true
 
 [tools.update_plan]
 enabled = true
+
+[tui]
+status_line = ["model-with-reasoning", "current-dir", "thread-name", "context-used"]                                                                                                      
+status_line_use_colors = true
 
 # Provider template: install.sh replaces the name, base_url and bearer token
 # placeholders with the values of the selected backend.
