@@ -36,7 +36,7 @@ usage() {
     printf '  Installs config.toml, global rules, skills, and the model list of the\n' >&2
     printf '  selected profile as ~/.codex/models.json. --profile <name> also points\n' >&2
     printf '  the custom provider of the installed config at that backend.\n' >&2
-    printf '  Profiles: deepseek (default), highgo, openlux, cc-switch.\n' >&2
+    printf '  Profiles: deepseek (default), highgo, openlux, cc-lite.\n' >&2
 }
 
 parse_args() {
@@ -79,17 +79,17 @@ select_profile() {
             provider_base_url='https://api.openlux.ai/v1/'
             provider_token='sbx-cs-openlux'
             ;;
-        cc-switch)
-            provider_name='CC Switch'
+        cc-lite)
+            provider_name='CC Lite'
             provider_base_url='http://host.docker.internal:15721/v1/'
-            provider_token='sbx-cs-cc-switch'
+            provider_token='sbx-cs-cc-lite'
             ;;
         deepseek)
             provider_name='DeepSeek'
             provider_base_url='https://api.deepseek.com/'
             provider_token='sbx-cs-deepseek'
             ;;
-        *) die "unknown profile: $profile_name (expected deepseek, highgo, openlux, or cc-switch)" ;;
+        *) die "unknown profile: $profile_name (expected deepseek, highgo, openlux, or cc-lite)" ;;
     esac
 }
 

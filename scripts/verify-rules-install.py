@@ -18,7 +18,7 @@ PROFILES = {
     "deepseek": ("DeepSeek", "https://api.deepseek.com/"),
     "highgo": ("HighGo", "http://host.docker.internal:8080/v1/"),
     "openlux": ("OpenLux", "https://api.openlux.ai/v1/"),
-    "cc-switch": ("CC Switch", "http://host.docker.internal:15721/v1/"),
+    "cc-lite": ("CC Lite", "http://host.docker.internal:15721/v1/"),
 }
 
 

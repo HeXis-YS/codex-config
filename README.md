@@ -40,7 +40,7 @@ cd codex-config
 ```bash
 ./install.sh --profile highgo
 ./install.sh --profile openlux
-./install.sh --profile cc-switch
+./install.sh --profile cc-lite
 ```
 
 每次安装将后端地址、认证值与模型目录成套替换；所有后端的 provider ID 均为 `custom`。脚本按当前 `HOME` 确定安装位置，不根据 `CODEX_HOME` 改变目标目录。
@@ -50,13 +50,13 @@ cd codex-config
 | `deepseek`（默认） | `https://api.deepseek.com/` | [models/deepseek.json](models/deepseek.json)：`deepseek-flash` |
 | `highgo` | `http://host.docker.internal:8080/v1/` | [models/highgo.json](models/highgo.json)：`deepseek-v4.1-flash`、`ccs-highgo/ZHIPU/GLM-5.3-Flash` |
 | `openlux` | `https://api.openlux.ai/v1/` | 每次安装执行 `codex debug models --bundled`，读取当前 CLI 自带的目录 |
-| `cc-switch` | `http://host.docker.internal:15721/v1/` | [models/cc-switch.json](models/cc-switch.json)：GPT、Claude 和 DeepSeek 的六个预设条目 |
+| `cc-lite` | `http://host.docker.internal:15721/v1/` | [models/cc-lite.json](models/cc-lite.json)：GPT、Claude、Gemini、DeepSeek 和 GLM 的十个预设条目 |
 
-配置不固定 `model` 或 `model_reasoning_effort`，默认模型按目录中较小的 `priority` 值选择。三个仓库目录的首选模型分别是 `deepseek-flash`、`deepseek-v4.1-flash` 和 `gpt-6-luna`；OpenLux 随所安装 CLI 的目录变化。
+配置不固定 `model` 或 `model_reasoning_effort`，默认模型按目录中较小的 `priority` 值选择。三个仓库目录的首选模型分别是 `deepseek-flash`、`deepseek-v4.1-flash` 和 `gpt-6-astra`；OpenLux 随所安装 CLI 的目录变化。
 
 OpenLux 不在仓库保存模型快照，也不从服务端的 `/v1/models` 生成目录。CLI 自带清单不证明相应后端支持其中全部模型。HighGo 的网关模型名需要与实际 provider 命名一致；其 DeepSeek 条目的提示词字段与默认 DeepSeek 目录不同，不能视为仅改名的副本。
 
-**安装成功只证明文件已分发，不证明后端能够返回结果或正确执行工具。** 已有后端兼容问题及历史验证范围见 [models/README.md](models/README.md)。其中 CC Switch 默认模型有 2026-10-21 的工具调用验证记录，其他模型未全部验证；OpenLux 仅有历史请求返回 401 的记录。这些记录不能作为后端当前可用性的保证。
+**安装成功只证明文件已分发，不证明后端能够返回结果或正确执行工具。** 已有后端兼容问题及历史验证范围见 [models/README.md](models/README.md)。原 CC Switch 模型目录的默认模型有 2026-10-21 的工具调用验证记录；该目录现已由 CC Lite 模型目录替换，不能据此推断新条目均已验证。OpenLux 仅有历史请求返回 401 的记录。这些记录不能作为后端当前可用性的保证。
 
 ### 安装结果
 
@@ -132,7 +132,7 @@ MCP 的 `NODE_OPTIONS` 当前写为 `--require /home/agent/.codex/proxy-setup.cj
 
 ```bash
 git pull
-./install.sh --profile cc-switch
+./install.sh --profile cc-lite
 ```
 
 不带 `--profile` 会重新使用默认 DeepSeek，不会沿用上一次选择。
