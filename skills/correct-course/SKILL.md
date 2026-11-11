@@ -1,6 +1,8 @@
 ---
 name: correct-course
 description: 仅在用户显式调用时处理当前协作中的目标、事实与行动方向分歧。普通纠正、情绪表达，以及引用或讨论纠错协议不自动调用。
+metadata:
+  opencode/autoinvoke: false
 ---
 
 # 纠错模式

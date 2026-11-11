@@ -1,0 +1,38 @@
+{
+  "compaction": {
+    "buffer": "5%"
+  },
+  "agents": {
+    "title": {
+      "model": "openai/gpt-6-luna"
+    },
+    "compaction": {
+      "model": "openai/gpt-6-luna"
+    },
+    "summary": {
+      "model": "openai/gpt-6-luna"
+    }
+  },
+  "providers": {
+    "openai": {
+      "settings": {
+        "baseURL": "https://api.openlux.ai/v1",
+        "apiKey": "sbx-cs-openlux"
+      },
+      "env": []
+    },
+    "anthropic": {
+      "settings": {
+        "baseURL": "https://api.openlux.ai/v1",
+        "apiKey": "sbx-cs-openlux"
+      },
+      "env": []
+    },
+    "deepseek": {
+      "settings": {
+        "apiKey": "sbx-cs-deepseek"
+      },
+      "env": []
+    }
+  }
+}

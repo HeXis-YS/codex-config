@@ -1,6 +1,8 @@
 ---
 name: score-incident
 description: 根据CVE风格的评分标准，对已记录的事故进行双轴评分（风险+影响）。
+metadata:
+  opencode/autoinvoke: false
 ---
 
 # 事故评分
