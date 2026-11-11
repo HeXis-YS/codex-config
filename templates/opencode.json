@@ -19,6 +19,7 @@
   "providers": {
     "openai": {
       "settings": {
+        "transport": "http",
         "baseURL": "https://api.openlux.ai/v1",
         "apiKey": "sbx-cs-openlux"
       },
