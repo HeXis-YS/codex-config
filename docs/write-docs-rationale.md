@@ -32,7 +32,7 @@
 | 数据缺失一律写“未采集” | 修正为区分已知未采集与无法确认是否采集；缺少记录不能证明没有执行。 |
 | 摘要约数必须有原始数据 | 保留测量摘要的追溯要求，同时区分来源本身的估计值；改写不能凭空增加精度。 |
 
-独立包随合并退役，安装器清理当前和旧技能安装目录中的 `write-report`。隔离验证既核对新包的完整安装，也核对旧包清理及无关技能保留。
+独立包随合并退役。当前 OpenCode 安装器只安装技能包文件，不清理既有安装目录中的旧技能，需要时由用户自行移除。
 
 ## Schema 文档的专用参考
 
@@ -103,9 +103,8 @@
 从仓库根目录执行：
 
 ```bash
-python3 "${CODEX_HOME:-$HOME/.codex}/skills/.system/skill-creator/scripts/quick_validate.py" skills/write-docs
-python3 scripts/verify-rules-install.py --skill write-docs --retired-skill write-report
+./scripts/verify-opencode-install.sh
 git diff --check
 ```
 
-第一项需要已安装 `skill-creator`，检查包的命名和 frontmatter。第二项的依赖、隔离方式与日志位置见 [README](../README.md#隔离安装核对)；它通过现有安装器核对规则及指定 skill 的文件清单和字节内容，并验证旧包清理。语言场景与本地引用仍需审查，工具结果不替代语义判断。
+隔离安装入口核对规则、技能包文件与安装副本，不修改当前用户配置；它只证明文件已正确安装，语言场景与本地引用仍需审查，工具结果不替代语义判断。

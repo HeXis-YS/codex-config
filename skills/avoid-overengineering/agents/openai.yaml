@@ -1,4 +1,0 @@
-interface:
-  display_name: "控制 GPT 过度工程化"
-  short_description: "要求 GPT 始终加载的补充约束，避免移除功能后追加禁令或测试"
-  default_prompt: "使用 $avoid-overengineering 处理当前任务，准确理解移除要求，并依据行为契约和回归风险选择新增测试。"

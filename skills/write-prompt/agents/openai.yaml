@@ -1,4 +1,0 @@
-interface:
-  display_name: "编写提示词"
-  short_description: "围绕任务与输出契约编写、评审和改进模型及 agent 提示词"
-  default_prompt: "使用 $write-prompt 根据我的任务或现有提示词，交付可直接使用的版本并说明关键假设。"
