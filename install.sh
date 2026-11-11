@@ -56,7 +56,16 @@ jq -n --argjson existing "$existing" \
     if ($update | length) != 1 or ($existing and ($current | length) != 1)
        or ($existing and ($current[0] | type) != "object")
     then error("invalid OpenCode configuration")
-    else ($current[0] // {}) | overlay($update[0]) end
+    else
+        ($current[0] // {})
+        # Replace this managed package while retaining unrelated plugin entries.
+        | (.plugins // [] | map(select(
+            (if type == "string" then . else .package end)
+            | test("^opencode-orchestrator(@|$)") | not
+        ))) as $plugins
+        | overlay($update[0])
+        | .plugins = ($plugins + $update[0].plugins)
+    end
 ' > "$merged" || die "could not merge $config"
 chmod 0600 "$merged"
 mv -f -- "$merged" "$config"
