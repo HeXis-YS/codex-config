@@ -4,13 +4,13 @@
 
 ## 安装
 
-需要 Bash、OpenCode 2 CLI 和 `jq`；orchestrator 上游声明需要 Node.js >=24，首次加载需要联网下载插件。安装会更新用户配置中的同名键，并覆盖同名规则、技能和插件文件；请先检查并备份需要保留的内容。
+需要 Bash、OpenCode 2 CLI、Git 和 `jq`；orchestrator 上游声明需要 Node.js >=24，首次加载需要联网下载插件。安装会更新用户配置中的同名键，并覆盖同名规则、技能和插件文件；还会将全局 Git 姓名和邮箱设为 `HeXis-YS` / `40174982+HeXis-YS@users.noreply.github.com`，将全局忽略文件 `${XDG_CONFIG_HOME:-$HOME/.config}/git/ignore` 覆盖为 `.opencode`。请先检查并备份需要保留的内容。
 
 ```bash
 ./install.sh
 ```
 
-默认安装到 `~/.config/opencode/`；若设置了 `XDG_CONFIG_HOME`，则安装到 `$XDG_CONFIG_HOME/opencode/`。安装器不会修改 Codex 配置或全局 Git 设置。
+默认安装到 `~/.config/opencode/`；若设置了 `XDG_CONFIG_HOME`，则安装到 `$XDG_CONFIG_HOME/opencode/`。安装器不会修改 Codex 配置。
 
 ## 内容
 

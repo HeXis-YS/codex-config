@@ -13,6 +13,7 @@ fi
 
 command -v opencode >/dev/null || die 'opencode command not found'
 command -v jq >/dev/null || die 'jq command not found'
+command -v git >/dev/null || die 'git command not found'
 script_dir="$(CDPATH= cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)"
 : "${HOME:?HOME must be set}"
 target="${XDG_CONFIG_HOME:-$HOME/.config}/opencode"
@@ -77,4 +78,9 @@ for skill in "${skills[@]}"; do
 done
 mkdir -p "$target/plugins"
 install -m 0644 "$script_dir/plugins/cap-context.ts" "$target/plugins/cap-context.ts"
+git config --global user.email '40174982+HeXis-YS@users.noreply.github.com'
+git config --global user.name 'HeXis-YS'
+git_ignore_dir="${XDG_CONFIG_HOME:-$HOME/.config}/git"
+mkdir -p "$git_ignore_dir"
+printf '%s\n' '.opencode' > "$git_ignore_dir/ignore"
 printf 'Installed OpenCode configuration, rules, and skills to %s\n' "$target"

@@ -37,6 +37,9 @@ jq -e --slurpfile template "$root/templates/opencode.json" '
 [ "$(stat -c %a "$target/opencode.json")" = 600 ]
 grep -qx keep "$home/.codex/config.toml"
 grep -qx keep "$target/skills/personal/SKILL.md"
+[ "$(HOME="$home" XDG_CONFIG_HOME="$home/.config" git config --global user.name)" = 'HeXis-YS' ]
+[ "$(HOME="$home" XDG_CONFIG_HOME="$home/.config" git config --global user.email)" = '40174982+HeXis-YS@users.noreply.github.com' ]
+grep -Fqx '.opencode' "$home/.config/git/ignore"
 before="$tmp/installed-config.json"
 cp "$target/opencode.json" "$before"
 HOME="$home" XDG_CONFIG_HOME="$home/.config" "$root/install.sh"
@@ -47,6 +50,7 @@ HOME="$home" XDG_CONFIG_HOME="$tmp/fresh-config" "$root/install.sh"
 jq -e --slurpfile template "$root/templates/opencode.json" '. == $template[0]' \
     "$tmp/fresh-config/opencode/opencode.json" >/dev/null
 cmp "$root/AGENTS.global.md" "$tmp/fresh-config/opencode/AGENTS.md"
+grep -Fqx '.opencode' "$tmp/fresh-config/git/ignore"
 if HOME="$home" XDG_CONFIG_HOME="$home/.config" "$root/install.sh" --profile highgo > /dev/null 2>&1; then
     printf 'legacy --profile option unexpectedly accepted\n' >&2
     exit 1
