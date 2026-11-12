@@ -20,6 +20,4 @@
 - [cap-context 插件](plugins/cap-context.ts)：安装到用户级 `plugins/`，限制部分模型的上下文与输入上限。
 - [opencode-orchestrator](https://github.com/agnusdei1207/opencode-orchestrator)：由 OpenCode 下载并加载，提供持久任务进度、`update_todo` 及 `/task`、`/stop` 等 mission 命令。
 
-OpenAI provider 固定使用 HTTP，以规避当前上游在会话续接时出现的 `invalid_encrypted_content` 错误；不使用 WebSocket 增量传输。
-
 安装成功只说明文件已复制，不代表模型或 MCP 服务可用。维护时可运行 `bash -n install.sh`、`./scripts/verify-opencode-install.sh` 和 `git diff --check`；需要确认服务是否可用时，再用实际请求验证。
