@@ -18,5 +18,6 @@
 - [全局规则](AGENTS.global.md)：安装为用户级 `AGENTS.md`；计划、进度与交接依据统一保存在项目的 `.opencode/todo.md`，通过精确补丁维护。仓库根目录的 [AGENTS.md](AGENTS.md) 只用于维护本项目。
 - [技能](skills/)：安装到用户级 `skills/`，由 OpenCode 按需发现和加载。
 - [cap-context 插件](plugins/cap-context.ts)：安装到用户级 `plugins/`，限制部分模型的上下文与输入上限。
+- [inject-model-skills 插件](plugins/inject-model-skills.ts)：根据模型自动注入对应的 skill：Fable 5.2 注入 [calibrate-fable](skills/calibrate-fable/)，Opus 5.5 注入 [constrain-opus](skills/constrain-opus/)，GPT 注入 [avoid-overengineering](skills/avoid-overengineering/)。
 
 安装成功只说明文件已复制，不代表模型或 MCP 服务可用。维护时可运行 `bash -n install.sh`、`./scripts/verify-opencode-install.sh` 和 `git diff --check`；需要确认服务是否可用时，再用实际请求验证。
