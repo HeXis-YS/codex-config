@@ -4,45 +4,26 @@
 
 ## 安装
 
-需要 Bash、OpenCode 2 CLI、Git 和 `jq`。安装会更新用户配置中的同名键，并覆盖同名规则、技能和插件文件；还会将全局 Git 姓名和邮箱设为 `HeXis-YS` / `40174982+HeXis-YS@users.noreply.github.com`，将全局忽略文件 `${XDG_CONFIG_HOME:-$HOME/.config}/git/ignore` 覆盖为 `.opencode`。请先检查并备份需要保留的内容。
+需要 Bash、OpenCode 2 CLI、Git 和 `jq`。使用前检查[配置模板](templates/opencode.json)中的服务地址与凭据。
+
+[安装脚本](install.sh)会合并配置，覆盖同名规则、技能和插件文件，并将全局 Git 身份设为脚本中的个人配置，将全局 Git 忽略文件覆盖为仅含 `.opencode` 的内容。执行前请核对这些设置并备份需要保留的内容。
 
 ```bash
 ./install.sh
 ```
 
-默认安装到 `~/.config/opencode/`；若设置了 `XDG_CONFIG_HOME`，则安装到 `$XDG_CONFIG_HOME/opencode/`。安装器不会修改 Codex 配置。
+默认安装到 `~/.config/opencode/`；若设置了 `XDG_CONFIG_HOME`，则安装到 `$XDG_CONFIG_HOME/opencode/`。
 
 ## 内容
 
-- [OpenCode 配置模板](templates/opencode.json)：管理 OpenLux、DeepSeek 及会话整理所用模型的配置；安装时合并进现有 `opencode.json`，未涉及的键（如 `$schema`、`mcp`）保持不变。不安装任务管理包；升级时移除此前管理的 `opencode-orchestrator` 配置项，保留其他插件条目。模板中的 key 字段为直接写入的值；使用前请按目标服务核对其实际用途和可用性。
-- [全局规则](AGENTS.global.md)：安装为用户级 `AGENTS.md`；计划、进度与交接依据统一保存在项目的 `.opencode/todo.md`，通过精确补丁维护。仓库根目录的 [AGENTS.md](AGENTS.md) 只用于维护本项目。
-- [技能](skills/)：安装到用户级 `skills/`，由 OpenCode 按需发现和加载。事故审查统一使用 [review-incident](skills/review-incident/SKILL.md)；升级时移除原 `record-incident`、`score-incident` 的 `SKILL.md` 入口，保留目录内其他文件。
-- [cap-context 插件](plugins/cap-context.ts)：安装到用户级 `plugins/`，限制部分模型的上下文与输入上限。
-- [inject-model-skills 插件](plugins/inject-model-skills.ts)：根据模型自动注入对应的 skill：Fable 5.2 注入 [calibrate-fable](skills/calibrate-fable/)，Opus 5.5 注入 [constrain-opus](skills/constrain-opus/)，GPT 注入 [avoid-overengineering](skills/avoid-overengineering/)。
+- [配置模板](templates/opencode.json)：模型服务与会话整理配置。
+- [全局规则](AGENTS.global.md)：安装为用户级 `AGENTS.md`，约定 Agent 的协作与工程行为。
+- [技能](skills/)：按任务选用的能力包，用法见各目录的 `SKILL.md`；例如[技术写作](skills/write-docs/SKILL.md)和[独立事故审查](skills/review-incident/SKILL.md)。
+- [cap-context 插件](plugins/cap-context.ts)：限制部分模型的上下文与输入上限。
+- [inject-model-skills 插件](plugins/inject-model-skills.ts)：按模型自动注入对应技能。
 
-安装成功只说明文件已复制，不代表模型或 MCP 服务可用。维护时可运行 `bash -n install.sh`、`./scripts/verify-opencode-install.sh` 和 `git diff --check`；需要确认服务是否可用时，再用实际请求验证。
+## 维护
 
-## 独立事故审查
+维护约定见仓库级 [AGENTS.md](AGENTS.md)，全局规则的设计依据见[设计说明](docs/agent-rule-rationale.md)。
 
-在独立于当事 Agent 的会话中调用，例如：
-
-```text
-$review-incident 审查 ses_目标会话近期的问题，记录事故并提出评分。
-$review-incident 核对本项目的 INC-YYYYMMDD-NNN 并评分。
-```
-
-流程为：API 取证 → 顺序审查 → 核对事实与缺口 → 记录并提出双轴评分 → 用户确认 → 写回评分及状态。原风险/影响分档与 60%/40% 权重沿用；事实记录、评分标准和取证脚本随同一个技能安装。
-
-默认只审查近期相关的任务片段，记录起止消息和必要补读范围；审查整个 session 需要用户明确要求。同一 session 中可能切换模型，行为、责任和用量均按实际消息模型区分。
-
-事故默认集中在项目的 `.opencode/incidents/`，每条事故保存为 `INC-YYYYMMDD-NNN.md`，也可使用用户指定的 incidents 目录。每份记录包含项目背景、模型角色、时间线、关键证据摘录、影响与评分依据，单独复制该文件即可阅读；原工作区路径、Git hash 和消息 ID 用于补充追溯。
-
-取证脚本需要 OpenCode 2 CLI、Bash 和 `jq`，在事故记录所在项目执行：
-
-```bash
-bash "${XDG_CONFIG_HOME:-$HOME/.config}/opencode/skills/review-incident/scripts/export-session.sh" ses_目标会话
-```
-
-取证输出位于新建的 `.opencode/runs/incident-<sessionID>-<时间>/`，包含完整 API 导出、消息索引、按模型分组的宿主用量和版本信息；详细参数见脚本 `--help`。完整导出供选取近期窗口，脚本的全会话用量不能代替窗口统计，也不直接等同于事故损失。正式单文件记录写入 incidents 目录；事故及原始证据保存在本地，不默认提交 Git。
-
-维护取证脚本时运行 `./scripts/verify-incident-export.sh`：用合成 API 响应检查原始证据保留、消息顺序、按执行模型汇总、缺失用量及失败处理，输入、脚本版本与结果保存在 `.opencode/runs/verify-incident-export.*/`。实际 API 连通性由取证入口对目标会话的运行结果单独验证。
+验证入口：安装行为用 `./scripts/verify-opencode-install.sh`，事故取证脚本用 `./scripts/verify-incident-export.sh`。这些检查不验证实际模型或 API 服务的可用性。
