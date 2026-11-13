@@ -8,6 +8,11 @@ home="$tmp/home"
 mkdir -p "$home/.codex" "$home/.config/opencode/skills/personal"
 printf 'keep\n' > "$home/.codex/config.toml"
 printf 'keep\n' > "$home/.config/opencode/skills/personal/SKILL.md"
+for obsolete in record-incident score-incident; do
+    mkdir -p "$home/.config/opencode/skills/$obsolete"
+    printf 'old entrypoint\n' > "$home/.config/opencode/skills/$obsolete/SKILL.md"
+done
+printf 'keep\n' > "$home/.config/opencode/skills/record-incident/personal-note.md"
 cat > "$home/.config/opencode/opencode.json" <<'JSON'
 {"$schema":"https://opencode.ai/config.json","mcp":{"servers":{"personal":{"type":"remote","url":"https://example.com/mcp"}}},"providers":{"openai":{"settings":{"baseURL":"https://old.example","timeout":1234}}},"plugins":["personal-plugin","opencode-orchestrator@2.0.20","opencode-orchestrator",{"package":"@personal/extra@1.2.0","options":{"keep":true}}],"unrelated":true}
 JSON
@@ -22,8 +27,11 @@ for skill in "$root"/skills/*; do
             continue
             ;;
     esac
-    cmp "$skill/SKILL.md" "$target/skills/${skill##*/}/SKILL.md"
+    diff -r "$skill" "$target/skills/${skill##*/}"
 done
+[ ! -e "$target/skills/record-incident/SKILL.md" ]
+[ ! -e "$target/skills/score-incident" ]
+grep -qx keep "$target/skills/record-incident/personal-note.md"
 cmp "$root/plugins/cap-context.ts" "$target/plugins/cap-context.ts"
 cmp "$root/plugins/inject-model-skills.ts" "$target/plugins/inject-model-skills.ts"
 jq -e --slurpfile template "$root/templates/opencode.json" '

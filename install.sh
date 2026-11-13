@@ -84,6 +84,14 @@ for skill in "${skills[@]}"; do
     mkdir -p "$target/skills/${skill##*/}"
     cp -a "$skill/." "$target/skills/${skill##*/}/"
 done
+# The merged skill replaces these two previously installed entrypoints.
+for obsolete in record-incident score-incident; do
+    dir="$target/skills/$obsolete"
+    rm -f -- "$dir/SKILL.md"
+    if [ -d "$dir" ]; then
+        rmdir --ignore-fail-on-non-empty -- "$dir"
+    fi
+done
 mkdir -p "$target/plugins"
 install -m 0644 "$script_dir/plugins/cap-context.ts" "$target/plugins/cap-context.ts"
 install -m 0644 "$script_dir/plugins/inject-model-skills.ts" "$target/plugins/inject-model-skills.ts"
