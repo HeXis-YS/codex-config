@@ -24,19 +24,6 @@
       },
       "env": []
     },
-    "openlux": {
-      "name": "Openlux",
-      "canonical": "openai",
-      "package": "@opencode/ai/providers/openai/chat",
-      "settings": {
-        "baseURL": "https://api.openlux.ai/v1",
-        "apiKey": "sbx-cs-openlux"
-      },
-      "env": [],
-      "models": {
-        "gpt-6-luna": {}
-      }
-    },
     "anthropic": {
       "settings": {
         "baseURL": "https://api.openlux.ai/v1",
