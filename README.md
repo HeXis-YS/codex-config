@@ -27,11 +27,15 @@
 在独立于当事 Agent 的会话中调用，例如：
 
 ```text
-$review-incident 审查 ses_目标会话的完整对话，记录事故并提出评分。
+$review-incident 审查 ses_目标会话近期的问题，记录事故并提出评分。
 $review-incident 核对本项目的 INC-YYYYMMDD-NNN 并评分。
 ```
 
 流程为：API 取证 → 顺序审查 → 核对事实与缺口 → 记录并提出双轴评分 → 用户确认 → 写回评分及状态。原风险/影响分档与 60%/40% 权重沿用；事实记录、评分标准和取证脚本随同一个技能安装。
+
+默认只审查近期相关的任务片段，记录起止消息和必要补读范围；审查整个 session 需要用户明确要求。同一 session 中可能切换模型，行为、责任和用量均按实际消息模型区分。
+
+事故默认集中在项目的 `.opencode/incidents/`，每条事故保存为 `INC-YYYYMMDD-NNN.md`，也可使用用户指定的 incidents 目录。每份记录包含项目背景、模型角色、时间线、关键证据摘录、影响与评分依据，单独复制该文件即可阅读；原工作区路径、Git hash 和消息 ID 用于补充追溯。
 
 取证脚本需要 OpenCode 2 CLI、Bash 和 `jq`，在事故记录所在项目执行：
 
@@ -39,6 +43,6 @@ $review-incident 核对本项目的 INC-YYYYMMDD-NNN 并评分。
 bash "${XDG_CONFIG_HOME:-$HOME/.config}/opencode/skills/review-incident/scripts/export-session.sh" ses_目标会话
 ```
 
-输出位于新建的 `.opencode/runs/incident-<sessionID>-<时间>/`，包含完整 API 导出、消息索引、按模型分组的宿主用量和版本信息；详细参数见脚本 `--help`。脚本汇总的数据供审查核对，费用不直接等同于事故损失。事故及原始证据保存在本地，不默认提交 Git。
+取证输出位于新建的 `.opencode/runs/incident-<sessionID>-<时间>/`，包含完整 API 导出、消息索引、按模型分组的宿主用量和版本信息；详细参数见脚本 `--help`。完整导出供选取近期窗口，脚本的全会话用量不能代替窗口统计，也不直接等同于事故损失。正式单文件记录写入 incidents 目录；事故及原始证据保存在本地，不默认提交 Git。
 
 维护取证脚本时运行 `./scripts/verify-incident-export.sh`：用合成 API 响应检查原始证据保留、消息顺序、按执行模型汇总、缺失用量及失败处理，输入、脚本版本与结果保存在 `.opencode/runs/verify-incident-export.*/`。实际 API 连通性由取证入口对目标会话的运行结果单独验证。
