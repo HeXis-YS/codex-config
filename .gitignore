@@ -1,4 +1,2 @@
-auth.json
-.opencode/todo.md
-.opencode/incidents.md
-.opencode/runs/
+.opencode/
+.codex/
