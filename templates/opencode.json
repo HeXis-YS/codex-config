@@ -1,7 +1,5 @@
 {
-  "plugins": [
-    "opencode-orchestrator"
-  ],
+  "plugins": [],
   "compaction": {
     "buffer": "5%"
   },

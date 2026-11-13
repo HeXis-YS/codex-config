@@ -59,7 +59,7 @@ jq -n --argjson existing "$existing" \
     then error("invalid OpenCode configuration")
     else
         ($current[0] // {})
-        # Replace this managed package while retaining unrelated plugin entries.
+        # Remove the previously managed task plugin while retaining unrelated entries.
         | (.plugins // [] | map(select(
             (if type == "string" then . else .package end)
             | test("^opencode-orchestrator(@|$)") | not
