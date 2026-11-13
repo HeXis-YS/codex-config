@@ -21,19 +21,12 @@ HOME="$home" XDG_CONFIG_HOME="$home/.config" "$root/install.sh"
 target="$home/.config/opencode"
 cmp "$root/AGENTS.global.md" "$target/AGENTS.md"
 for skill in "$root"/skills/*; do
-    # 跳过由插件注入的 skill
-    case "${skill##*/}" in
-        calibrate-fable|constrain-opus|avoid-overengineering)
-            continue
-            ;;
-    esac
     diff -r "$skill" "$target/skills/${skill##*/}"
 done
 [ ! -e "$target/skills/record-incident/SKILL.md" ]
 [ ! -e "$target/skills/score-incident" ]
 grep -qx keep "$target/skills/record-incident/personal-note.md"
 cmp "$root/plugins/cap-context.ts" "$target/plugins/cap-context.ts"
-cmp "$root/plugins/inject-model-skills.ts" "$target/plugins/inject-model-skills.ts"
 jq -e --slurpfile template "$root/templates/opencode.json" '
     .["$schema"] == "https://opencode.ai/config.json"
     and .mcp.servers.personal.url == "https://example.com/mcp"

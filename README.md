@@ -20,7 +20,6 @@
 - [全局规则](AGENTS.global.md)：安装为用户级 `AGENTS.md`，约定 Agent 的协作与工程行为。
 - [技能](skills/)：按任务选用的能力包，用法见各目录的 `SKILL.md`；例如[技术写作](skills/write-docs/SKILL.md)和[独立事故审查](skills/review-incident/SKILL.md)。
 - [cap-context 插件](plugins/cap-context.ts)：限制部分模型的上下文与输入上限。
-- [inject-model-skills 插件](plugins/inject-model-skills.ts)：按模型自动注入对应技能。
 
 ## 维护
 

@@ -31,9 +31,7 @@ shopt -u nullglob
 for skill in "${skills[@]}"; do
     [ -f "$skill/SKILL.md" ] || die "missing SKILL.md in $skill"
 done
-for plugin_file in cap-context.ts inject-model-skills.ts; do
-    [ -f "$script_dir/plugins/$plugin_file" ] || die "missing $plugin_file plugin"
-done
+[ -f "$script_dir/plugins/cap-context.ts" ] || die 'missing cap-context.ts plugin'
 
 mkdir -p "$target"
 config="$target/opencode.json"
@@ -75,12 +73,6 @@ mv -f -- "$merged" "$config"
 install -m 0644 "$script_dir/AGENTS.global.md" "$target/AGENTS.md"
 mkdir -p "$target/skills"
 for skill in "${skills[@]}"; do
-    # 跳过由插件注入的 skill（避免重复加载）
-    case "${skill##*/}" in
-        calibrate-fable|constrain-opus|avoid-overengineering)
-            continue
-            ;;
-    esac
     mkdir -p "$target/skills/${skill##*/}"
     cp -a "$skill/." "$target/skills/${skill##*/}/"
 done
@@ -94,7 +86,7 @@ for obsolete in record-incident score-incident; do
 done
 mkdir -p "$target/plugins"
 install -m 0644 "$script_dir/plugins/cap-context.ts" "$target/plugins/cap-context.ts"
-install -m 0644 "$script_dir/plugins/inject-model-skills.ts" "$target/plugins/inject-model-skills.ts"
+rm -f -- "$target/plugins/inject-model-skills.ts"
 git config --global user.email '40174982+HeXis-YS@users.noreply.github.com'
 git config --global user.name 'HeXis-YS'
 git_ignore_dir="${XDG_CONFIG_HOME:-$HOME/.config}/git"
