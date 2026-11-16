@@ -133,5 +133,5 @@ git config --global user.email '40174982+HeXis-YS@users.noreply.github.com'
 git config --global user.name 'HeXis-YS'
 git_ignore_dir="${XDG_CONFIG_HOME:-$HOME/.config}/git"
 mkdir -p "$git_ignore_dir"
-printf '%s\n' '.opencode' > "$git_ignore_dir/ignore"
+printf '%s\n' '.opencode' '.codex' > "$git_ignore_dir/ignore"
 printf 'Installed OpenCode configuration, rules, and plugins to %s\n' "$target"
