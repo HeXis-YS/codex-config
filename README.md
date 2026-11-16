@@ -4,15 +4,20 @@
 
 ## 安装
 
-需要 Bash、OpenCode 2 CLI、Git 和 `jq`。使用前检查[配置模板](templates/opencode.json)中的服务地址与凭据。
+宿主机需要 Bash 和常用文件工具；容器内还需要 OpenCode 2 CLI、Git、`jq` 和 `findmnt`（util-linux）。容器安装前检查[配置模板](templates/opencode.json)中的服务地址与凭据。
 
-[安装脚本](install.sh)会合并配置，覆盖同名规则、技能和插件文件，并将全局 Git 身份设为脚本中的个人配置，将全局 Git 忽略文件覆盖为仅含 `.opencode` 的内容。执行前请核对这些设置并备份需要保留的内容。
+在宿主机或容器内均运行同一个[安装脚本](install.sh)，脚本自动识别环境：
+
+- 宿主机：只安装技能到 `~/.local/state/sandboxes/sandboxes/agent-skills`，供新容器只读挂载。
+- 容器：独立管理配置、规则和插件；技能目录只读时保持不变，没有只读挂载的旧容器仍安装本地技能。
+
+安装会覆盖同名文件；容器内还会合并配置，将全局 Git 身份设为脚本中的个人配置，将全局 Git 忽略文件覆盖为仅含 `.opencode` 的内容。执行前请核对设置并备份需要保留的内容。
 
 ```bash
 ./install.sh
 ```
 
-默认安装到 `~/.config/opencode/`；若设置了 `XDG_CONFIG_HOME`，则安装到 `$XDG_CONFIG_HOME/opencode/`。
+容器默认安装到 `~/.config/opencode/`；若设置了 `XDG_CONFIG_HOME`，则安装到 `$XDG_CONFIG_HOME/opencode/`。
 
 ## 内容
 
@@ -25,4 +30,4 @@
 
 维护约定见仓库级 [AGENTS.md](AGENTS.md)，全局规则的设计依据见[设计说明](docs/agent-rule-rationale.md)。
 
-验证入口：安装行为用 `./scripts/verify-opencode-install.sh`，事故取证脚本用 `./scripts/verify-incident-export.sh`。这些检查不验证实际模型或 API 服务的可用性。
+验证入口：安装行为用 `./scripts/verify-opencode-install.sh`（需要 Linux、bubblewrap 和免密码 `sudo`，使用隔离 HOME 与真实只读挂载），事故取证脚本用 `./scripts/verify-incident-export.sh`。这些检查不验证实际模型或 API 服务的可用性。
