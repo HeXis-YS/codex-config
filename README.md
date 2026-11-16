@@ -25,6 +25,21 @@
 - [全局规则](AGENTS.global.md)：安装为用户级 `AGENTS.md`，约定 Agent 的协作与工程行为。
 - [技能](skills/)：按任务选用的能力包，用法见各目录的 `SKILL.md`；例如[技术写作](skills/write-docs/SKILL.md)和[独立事故审查](skills/review-incident/SKILL.md)。
 - [cap-context 插件](plugins/cap-context.ts)：限制部分模型的上下文与输入上限。
+- [备份脚本](backup.sh)：备份和恢复 OpenCode 用户数据，用于容器间迁移。
+
+## 备份与迁移
+
+在容器之间迁移 OpenCode 会话数据时，直接打包 `XDG_DATA_HOME/opencode`（默认 `~/.local/share/opencode`）：
+
+```bash
+# 源容器
+./backup.sh backup /path/to/opencode-backup.tar.gz
+
+# 复制到目标容器
+./backup.sh restore /path/to/opencode-backup.tar.gz
+```
+
+脚本会在备份和恢复前自动停止 OpenCode 服务。归档包含会话数据库、凭据、shell 快照和工具输出；配置和技能由 `install.sh` 单独安装。归档含敏感数据，请妥善保管。
 
 ## 维护
 
