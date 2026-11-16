@@ -1,0 +1,104 @@
+# Git 操作参考
+
+按需要阅读对应部分。以下命令说明语义与用法，不构成执行授权；示例中的占位符须替换为已核实的对象。参数支持以本机 Git 版本为准。
+
+## HEAD、index 与工作区
+
+| 操作 | 改变的状态 |
+| --- | --- |
+| `git add -- <path>` | 把工作区对应内容写入 index；通常包含该路径全部当前修改 |
+| `git commit` | 默认从整个 index 创建提交，并更新当前分支或 detached HEAD |
+| `git restore --staged -- <path>` | 默认从 HEAD 恢复对应 index 内容，不改变工作区 |
+| `git restore -- <path>` | 默认从 index 恢复工作区，覆盖对应未暂存修改 |
+| `git restore --source=<tree> --staged --worktree -- <path>` | 同时恢复 index 与工作区；源中没有的跟踪路径可被删除 |
+| `git reset --soft <commit>` | 移动当前分支或 detached HEAD，保留 index 和工作区 |
+| `git reset --mixed <commit>` | 移动引用并重置 index，保留工作区 |
+| `git reset --hard <commit>` | 移动引用并重置 index 和工作区，也可能覆盖妨碍写入的未跟踪内容 |
+| `git revert <commit>` | 通过新提交反转指定提交的效果；可能冲突，不保证后续代码语义正确 |
+
+取消暂存虽不改变工作区，也可能丢掉“只存在于 index 的版本”或已有差异块选择；不能把它当作不改变用户状态的查询操作。
+
+新仓库可能尚无 HEAD 提交，此时部分比较和恢复命令不可用；先识别 unborn branch，不把正常初始状态误当损坏。
+
+## 精确暂存
+
+- 在支持交互的环境中，可用 `git add -p -- <path>` 选择差异块。
+- 非交互环境可基于当前 index 到工作区的实际 diff，准备仅含目标修改的补丁，先用 `git apply --cached --check <patch-file>` 检查，再用 `git apply --cached <patch-file>` 应用。补丁应使用合法的上下文和 hunk 计数，不盲填交互回答。
+- 应用后仍检查 `git diff --cached`。补丁适用不证明归属正确，也不排除 index 中已有其他修改。
+- 若 index 含他人内容，不使用普通 `git commit` 顺便提交。对互不重叠、且整文件都属于本任务的已跟踪路径，可在确认语义后使用 `git commit --only -- <paths>`：它取这些路径的工作区内容，而不是这些路径的部分暂存版本；其他已暂存路径保留。
+- 同文件混合修改且 index 也有他人版本时，先确定可保留各版本的隔离提交方式；无法可靠分离就询问，不以清空 index、整文件提交或自动 stash 兜底。
+
+暂存和提交之间若有其他写入者，检查结果可能失效。存在实际竞争时协调写入或使用独立 worktree，而不是假定 Git 的短时 index 锁能保护整个多步流程。
+
+## 分支、worktree 与远端
+
+按问题使用相应查询：
+
+```bash
+git branch --show-current
+git worktree list --porcelain
+git remote -v
+git branch -vv
+git log --oneline <target>..<source>
+git log --left-right --oneline <target>...<source>
+git diff <target>...<source>
+```
+
+- `branch --show-current` 为空可能表示 detached HEAD，需结合 status 判断。
+- `log A..B` 列出 B 可达而 A 不可达的提交；`log A...B` 是两侧独有提交。`diff A...B` 则比较共同祖先到 B 的内容，不能与 log 的三点语义混用。
+- 分支引用和工作区是不同对象：删除 worktree 通常不删除分支，删除分支也不等于立即擦除所有提交对象。清理时分别核对保留要求。
+- 未推送不等于未保存；已推送也不等于允许删掉工作区中的未提交或忽略文件。detached HEAD 的独有提交尤其需要先确认保留引用。
+
+推送用已确认的远端和目标引用表达意图，例如：
+
+```bash
+git push <remote> HEAD:refs/heads/<target>
+```
+
+仅当已授权替换远端历史、并审查了远端当前提交 `<expected-oid>` 时，才考虑：
+
+```bash
+git push --force-with-lease=refs/heads/<target>:<expected-oid> <remote> HEAD:refs/heads/<target>
+```
+
+未显式指定预期值的 lease 依赖本地远端跟踪引用，后台 fetch 可改变该依据。显式 lease 失败说明状态已变，应重新调查，不自动更新预期值再试。
+
+## 进行中的操作与冲突
+
+先用 status 识别操作，再查看冲突路径：
+
+```bash
+git diff --name-only --diff-filter=U
+git ls-files -u
+```
+
+需要理解单个冲突时，可检查 index 的 stage 1（共同祖先）、2（ours）、3（theirs）；添加/删除冲突可能缺少其中某个版本。
+
+- merge 中通常将当前分支视为 ours、被合入分支视为 theirs。
+- rebase 中 ours 通常是已重放到上游上的一侧，theirs 是正在重放的原分支提交。不要根据字面把 ours 当作“我的任务修改”。
+- 解决后检查语义与冲突标记，再暂存目标路径并用对应操作的 `--continue`。
+- `--skip` 会跳过提交，不是一般的冲突解决方式。abort 会改变中间状态，也可能失去已做的解决工作；决定终止前核对归属和需要保留的内容。
+- 出错后保留实际状态并报告。不为恢复“干净”自动 abort、reset 或删除冲突文件；merge 开始前已有的未提交修改也未必能被 abort 完整重建。
+
+## stash、clean 与恢复边界
+
+- `stash push` 默认保存跟踪文件的暂存与未暂存修改并清理相应状态；`-u` 加入未跟踪文件，`-a` 还加入忽略文件。使用路径范围也应核对实际包含内容。
+- `stash apply` 保留 stash 条目；`pop` 成功后会移除条目。恢复 index 的选择是额外语义，不能把“文件内容回来了”当作原暂存状态也已恢复。
+- `clean` 用于删除未跟踪内容。执行前用与正式操作相同的路径和过滤选项预览，例如 `git clean -nd -- <path>`；`-x` 包含忽略文件，可能涉及配置、凭据和本地数据。
+- reflog 可以帮助定位旧的提交引用，但有过期和对象清理边界。查到对象后先检查内容，再建立保留引用或恢复所需文件；不是每个未提交版本都能从 reflog 找回。
+- 恢复已发布历史的效果时，revert 通常比重写历史更符合保留历史的要求，但仍需检查后续依赖。revert merge 还需确定 mainline，并理解它会影响后续再次合并的结果。
+
+## 来源与取舍
+
+命令语义主要依据官方资料：
+
+- [Pro Git：Reset Demystified](https://git-scm.com/book/en/v2/Git-Tools-Reset-Demystified)
+- [git-add](https://git-scm.com/docs/git-add)、[git-commit](https://git-scm.com/docs/git-commit)、[git-apply](https://git-scm.com/docs/git-apply)
+- [git-reset](https://git-scm.com/docs/git-reset)、[git-restore](https://git-scm.com/docs/git-restore)、[git-revert](https://git-scm.com/docs/git-revert)
+- [git-worktree](https://git-scm.com/docs/git-worktree)、[git-push](https://git-scm.com/docs/git-push)
+- [git-merge](https://git-scm.com/docs/git-merge)、[git-rebase](https://git-scm.com/docs/git-rebase)
+- [git-stash](https://git-scm.com/docs/git-stash)、[git-clean](https://git-scm.com/docs/git-clean)、[git-reflog](https://git-scm.com/docs/git-reflog)
+
+流程参考 [Superpowers](https://github.com/obra/superpowers/tree/main/skills)、[Codex 的既有改动保护提示词](https://github.com/openai/codex/blob/main/codex-rs/core/gpt_5_codex_prompt.md)和 [Aider Git integration](https://aider.chat/docs/git.html)。采用状态识别、改动分离和交付核对的思路；归属以实际证据判断，授权遵循当前任务和有效约定，不采用按目录名推定所有权、遇脏即停或默认提交既有修改的做法。
+
+本 skill 是决策与操作指导，不提供强制权限隔离。MCP 的参数校验、宿主权限控制及沙箱属于执行层，须按实际实现核对。
