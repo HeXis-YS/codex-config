@@ -32,9 +32,11 @@ jq -e --slurpfile template "$root/templates/opencode.json" '
     and .mcp.servers.personal.url == "https://example.com/mcp"
     and .unrelated == true
     and .providers.openai.settings.timeout == 1234
-    and (.providers | keys == ["anthropic", "deepseek", "openai"])
+    and (.providers | keys == ["anthropic", "deepseek", "google", "openai"])
     and (.providers.openai.settings.apiKey | type == "string" and length > 0 and (startswith("{env:") | not))
     and .providers.anthropic.settings.apiKey == .providers.openai.settings.apiKey
+    and .providers.google.settings.baseURL == "https://api.openlux.ai/v1beta"
+    and .providers.google.settings.apiKey == .providers.openai.settings.apiKey
     and (.providers.deepseek.settings.apiKey | type == "string" and length > 0 and (startswith("{env:") | not))
     and .compaction.buffer == "5%"
     and .agents.title.model == "openai/gpt-6-luna"

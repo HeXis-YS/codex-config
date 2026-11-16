@@ -29,6 +29,13 @@
       },
       "env": []
     },
+    "google": {
+      "settings": {
+        "baseURL": "https://api.openlux.ai/v1beta",
+        "apiKey": "sbx-cs-openlux"
+      },
+      "env": []
+    },
     "deepseek": {
       "settings": {
         "apiKey": "sbx-cs-deepseek"
