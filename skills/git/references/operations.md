@@ -20,6 +20,41 @@
 
 新仓库可能尚无 HEAD 提交，此时部分比较和恢复命令不可用；先识别 unborn branch，不把正常初始状态误当损坏。
 
+## 破坏性操作的预检与备份
+
+执行前置条件由 [SKILL.md](../SKILL.md#破坏性操作的执行前置条件) 定义；本节说明如何取得检查证据。
+
+### 原生 dry-run 与等效检查
+
+| 操作 | 预检方法 |
+| --- | --- |
+| `clean` | 使用原生 `-n`，保留计划中的路径、`-d`、`-x`/`-X` 和排除规则，例如 `git clean -nd -- <path>`；读取全部待删除路径 |
+| 强制推送或远端引用删除 | 使用同一远端、refspec 和 lease 条件的 `git push --dry-run ...`，同时核对远端当前引用和将被替换的历史 |
+| `reset` | 没有通用 `--dry-run`。按具体模式比较目标提交、当前 HEAD、index 与工作区，列出将移出分支的提交和受影响内容；路径形式还需限定 pathspec |
+| 用于丢弃内容的 restore/checkout | 没有通用 dry-run；比较指定来源和实际恢复位置，区分仅 index、仅工作区或两者，检查源中缺失而将被删除的路径 |
+| amend/rebase、引用或 worktree 删除 | 检查涉及的提交范围、引用可达性和工作区状态，列明将重写或删除的对象；仅查看目录名或最新提交不足以代替预检 |
+
+检查 reset 时，可按目标使用 `git log <target>..HEAD`、`git diff --cached <target>`、`git diff <target>` 及带路径限制的比较，但要根据具体模式解释结果：这些命令分别展示提交集合或内容差异，不是完整的 reset 模拟器。`--hard` 还可能覆盖阻碍目标文件写入的未跟踪内容，普通 diff 不覆盖此类文件；涉及忽略文件、子模块或冲突状态时须补充相应检查，无法确认则停止。
+
+dry-run 不保证稍后的操作一定成功，也不锁住状态；例如推送的远端检查和 hooks 可能只在正式执行时完成。等效预检必须明确标为只读影响检查，不声称执行了不存在的 `reset --dry-run`。
+
+### 新建并核对备份分支
+
+给每次操作使用新的 `backup/<purpose>-<timestamp>` 名称，重名时另取名称，不覆盖旧备份。先解析并记录实际受影响端点的完整 OID，再创建和核对：
+
+```bash
+git branch <new-backup-branch> <before-oid>
+git rev-parse --verify refs/heads/<new-backup-branch>
+```
+
+第二条命令的结果必须等于记录的 `<before-oid>`。创建备份分支不需要切换工作区。
+
+- reset、amend、rebase 等当前历史操作通常从执行前 HEAD 建立备份。
+- 删除其他分支或替换远端历史时，备份应指向被删除或替换端点，不能仅备份当前 HEAD。必要时先获取该提交对象；操作只影响文件时也按主体要求新建当前 HEAD 的备份分支。
+- unborn branch 没有可供备份分支指向的提交，不能伪称备份完成或自动创建初始提交来绕过要求；停止并向用户说明。
+- 对文件丢弃或 clean，将预检列出的受影响内容另存到操作范围外。需要保留暂存状态时，同时保存 index 对应版本及恢复依据；只导出普通 `git diff` 不包含仅暂存版本、未跟踪或忽略文件的全部状态。
+- 记录备份分支、OID 和额外备份位置，核对可读取且覆盖所需内容。恢复方法必须与备份内容对应；操作完成不自动删除备份。
+
 ## 精确暂存
 
 - 在支持交互的环境中，可用 `git add -p -- <path>` 选择差异块。
@@ -84,7 +119,7 @@ git ls-files -u
 
 - `stash push` 默认保存跟踪文件的暂存与未暂存修改并清理相应状态；`-u` 加入未跟踪文件，`-a` 还加入忽略文件。使用路径范围也应核对实际包含内容。
 - `stash apply` 保留 stash 条目；`pop` 成功后会移除条目。恢复 index 的选择是额外语义，不能把“文件内容回来了”当作原暂存状态也已恢复。
-- `clean` 用于删除未跟踪内容。执行前用与正式操作相同的路径和过滤选项预览，例如 `git clean -nd -- <path>`；`-x` 包含忽略文件，可能涉及配置、凭据和本地数据。
+- `clean` 用于删除未跟踪内容；`-x` 包含忽略文件，可能涉及配置、凭据和本地数据。预检和备份按[破坏性操作的预检与备份](#破坏性操作的预检与备份)执行。
 - reflog 可以帮助定位旧的提交引用，但有过期和对象清理边界。查到对象后先检查内容，再建立保留引用或恢复所需文件；不是每个未提交版本都能从 reflog 找回。
 - 恢复已发布历史的效果时，revert 通常比重写历史更符合保留历史的要求，但仍需检查后续依赖。revert merge 还需确定 mainline，并理解它会影响后续再次合并的结果。
 
@@ -98,6 +133,7 @@ git ls-files -u
 - [git-worktree](https://git-scm.com/docs/git-worktree)、[git-push](https://git-scm.com/docs/git-push)
 - [git-merge](https://git-scm.com/docs/git-merge)、[git-rebase](https://git-scm.com/docs/git-rebase)
 - [git-stash](https://git-scm.com/docs/git-stash)、[git-clean](https://git-scm.com/docs/git-clean)、[git-reflog](https://git-scm.com/docs/git-reflog)
+- [Conventional Commits 1.0.0](https://www.conventionalcommits.org/en/v1.0.0/)
 
 流程参考 [Superpowers](https://github.com/obra/superpowers/tree/main/skills)、[Codex 的既有改动保护提示词](https://github.com/openai/codex/blob/main/codex-rs/core/gpt_5_codex_prompt.md)和 [Aider Git integration](https://aider.chat/docs/git.html)。采用状态识别、改动分离和交付核对的思路；归属以实际证据判断，授权遵循当前任务和有效约定，不采用按目录名推定所有权、遇脏即停或默认提交既有修改的做法。
 
