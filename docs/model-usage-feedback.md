@@ -107,7 +107,7 @@ GPT 则处于另一极端，更愿意“多做一点”来保证质量，表现�
 
 ## 与既有记录的关系
 
-最初根据质量偏好及 Opus 5.5 的执行、报告反馈，创建 `deliver-thoroughly`，要求所有 Claude 加载。2026-10-27 的调整将其替换为仅要求 Opus 5.5 加载的 [`constrain-opus`](../skills/constrain-opus/SKILL.md)：Fable 的实际反馈不足以支持继续施加同一组补充约束，Opus 的问题也不应推广到所有 Claude 型号。
+最初根据质量偏好及 Opus 5.5 的执行、报告反馈，创建 `deliver-thoroughly`，要求所有 Claude 加载。2026-10-27 的调整将其替换为仅要求 Opus 5.5 加载的 [`constrain-opus`](../models-md/claude-opus-5-5.md)：Fable 的实际反馈不足以支持继续施加同一组补充约束，Opus 的问题也不应推广到所有 Claude 型号。
 
 新模块保留充分投入、完整交付、数据真实及成果表述与证据相称的要求，并根据[事故摘要](opus-5.5-security-incident.md)补充操作对象、工具拒绝、交接记录及事后归因的约束。事故事实支持这些针对性补丁，不支持推断主观动机。模块强调审计不自动授权修复或清理；其他任务仍以当前明确授权为准，不把使用场景建议改成无条件禁令。
 

@@ -22,11 +22,11 @@ done
 
 # A minimal filesystem hides real container markers without altering the host.
 sandbox=(bwrap --die-with-parent --unshare-pid --proc /proc --dev /dev)
-for dir in /usr /bin /lib /lib64 /etc /home /tmp; do
+for dir in /usr /bin /lib /lib64 /etc /home /tmp /opt; do
     [ ! -e "$dir" ] || sandbox+=(--ro-bind "$dir" "$dir")
 done
 sandbox+=(--ro-bind "$root" "$root" --bind "$tmp" "$tmp")
-opencode="$(command -v opencode)"
+opencode="$(readlink -f -- "$(command -v opencode)")"
 sandbox+=(--ro-bind "$opencode" "$opencode")
 
 run_install() {
@@ -54,13 +54,20 @@ home="$tmp/home"
 mkdir -p "$home/.codex" "$home/.config/opencode/skills/personal"
 printf 'keep\n' > "$home/.codex/config.toml"
 printf 'keep\n' > "$home/.config/opencode/skills/personal/SKILL.md"
-for obsolete in record-incident score-incident; do
+for obsolete in record-incident score-incident avoid-overengineering calibrate-fable constrain-opus; do
     mkdir -p "$home/.config/opencode/skills/$obsolete"
     printf 'old entrypoint\n' > "$home/.config/opencode/skills/$obsolete/SKILL.md"
 done
+mkdir -p "$home/.config/opencode/skills/avoid-overengineering/references"
+printf 'old reference\n' > "$home/.config/opencode/skills/avoid-overengineering/references/verification.md"
 printf 'keep\n' > "$home/.config/opencode/skills/record-incident/personal-note.md"
+mkdir -p "$home/.config/opencode/model-skills/avoid-overengineering" \
+    "$home/.config/opencode/models-md/references"
+printf 'old copy\n' > "$home/.config/opencode/model-skills/avoid-overengineering/SKILL.md"
+printf 'old reference\n' > "$home/.config/opencode/models-md/references/verification.md"
+printf 'old name\n' > "$home/.config/opencode/models-md/gpt.md"
 cat > "$home/.config/opencode/opencode.json" <<'JSON'
-{"$schema":"https://opencode.ai/config.json","mcp":{"servers":{"personal":{"type":"remote","url":"https://example.com/mcp"}}},"providers":{"openai":{"settings":{"baseURL":"https://old.example","timeout":1234}}},"plugins":["personal-plugin","opencode-orchestrator@2.0.20","opencode-orchestrator",{"package":"@personal/extra@1.2.0","options":{"keep":true}}],"unrelated":true}
+{"$schema":"https://opencode.ai/config.json","mcp":{"servers":{"personal":{"type":"remote","url":"https://example.com/mcp"}}},"providers":{"openai":{"settings":{"baseURL":"https://old.example","timeout":1234}}},"plugins":["personal-plugin","opencode-orchestrator@2.0.20","opencode-orchestrator",{"package":"@acramsay/opencode-models-md@0.0.0"},"@acramsay/opencode-models-md",{"package":"@personal/extra@1.2.0","options":{"keep":true}}],"unrelated":true}
 JSON
 
 run_install "$home" "$home/.config" legacy
@@ -72,6 +79,18 @@ done
 [ ! -e "$target/skills/record-incident/SKILL.md" ]
 [ ! -e "$target/skills/score-incident" ]
 grep -qx keep "$target/skills/record-incident/personal-note.md"
+# Model instructions moved out of the skills directory and mirror models-md.
+for skill in avoid-overengineering calibrate-fable constrain-opus; do
+    [ ! -e "$target/skills/$skill" ]
+done
+for model in gpt-6 claude-fable-5-2 claude-opus-5-5; do
+    cmp "$root/models-md/$model.md" "$target/models-md/$model.md"
+done
+# Earlier layouts are removed, and the merged reference stays available.
+[ ! -e "$target/model-skills" ]
+[ ! -e "$target/models-md/references" ]
+[ ! -e "$target/models-md/gpt.md" ]
+grep -q '^#### 新增测试的依据$' "$target/models-md/gpt-6.md"
 cmp "$root/plugins/cap-context.ts" "$target/plugins/cap-context.ts"
 jq -e --slurpfile template "$root/templates/opencode.json" '
     .["$schema"] == "https://opencode.ai/config.json"
@@ -119,11 +138,14 @@ printf 'Legacy container installation checks passed.\n'
 
 host_home="$tmp/host-home"
 host_target="$host_home/.local/state/sandboxes/sandboxes/agent-skills"
-mkdir -p "$host_target/personal" "$host_target/record-incident" "$host_target/score-incident"
+mkdir -p "$host_target/personal" "$host_target/record-incident" "$host_target/score-incident" \
+    "$host_target/avoid-overengineering/references"
 printf 'keep\n' > "$host_target/personal/SKILL.md"
 printf 'old entrypoint\n' > "$host_target/record-incident/SKILL.md"
 printf 'old entrypoint\n' > "$host_target/score-incident/SKILL.md"
 printf 'keep\n' > "$host_target/record-incident/personal-note.md"
+printf 'old entrypoint\n' > "$host_target/avoid-overengineering/SKILL.md"
+printf 'old reference\n' > "$host_target/avoid-overengineering/references/verification.md"
 for attempt in 1 2; do
     run_install "$host_home" "$host_home/.config" host
     for skill in "$root"/skills/*; do
@@ -134,6 +156,9 @@ grep -qx keep "$host_target/personal/SKILL.md"
 grep -qx keep "$host_target/record-incident/personal-note.md"
 [ ! -e "$host_target/record-incident/SKILL.md" ]
 [ ! -e "$host_target/score-incident" ]
+[ ! -e "$host_target/avoid-overengineering" ]
+[ ! -e "$host_target/calibrate-fable" ]
+[ ! -e "$host_target/constrain-opus" ]
 [ ! -e "$host_home/.config" ]
 [ ! -e "$host_home/.gitconfig" ]
 printf 'Host skills-only installation checks passed without container dependencies.\n'
@@ -150,17 +175,32 @@ for container in first second; do
     run_install "$container_home" "$container_home/.config" shared > "$tmp/$container-output.log"
     cat "$tmp/$container-output.log"
     grep -Fq 'mounted read-only; left unchanged.' "$tmp/$container-output.log"
-    jq -e --arg plugin "$container-plugin" \
-        '.plugins == [$plugin] and .providers.openai.settings.timeout == 5678
+    jq -e --arg plugin "$container-plugin" --slurpfile template "$root/templates/opencode.json" \
+        '.plugins == ([$plugin] + $template[0].plugins) and .providers.openai.settings.timeout == 5678
          and .providers.google.settings.baseURL == "https://api.openlux.ai/v1beta"' \
         "$container_target/opencode.json" >/dev/null
     cmp "$root/AGENTS.global.md" "$container_target/AGENTS.md"
     cmp "$root/plugins/cap-context.ts" "$container_target/plugins/cap-context.ts"
+    # Model instructions are installed locally even when shared skills are read-only.
+    for model in gpt-6 claude-fable-5-2 claude-opus-5-5; do
+        cmp "$root/models-md/$model.md" "$container_target/models-md/$model.md"
+    done
     # No local skills may be installed underneath the temporary read-only mount.
     [ -z "$(ls -A "$container_target/skills")" ]
 done
 diff -r "$tmp/shared-before" "$tmp/shared-skills"
 printf 'Read-only shared skills and independent container configurations: PASS\n'
+
+# A read-only mount from an older host install must surface the stale copies.
+mkdir -p "$tmp/shared-skills/avoid-overengineering"
+printf 'old entrypoint\n' > "$tmp/shared-skills/avoid-overengineering/SKILL.md"
+stale_home="$tmp/stale-home"
+mkdir -p "$stale_home/.config/opencode/skills"
+run_install "$stale_home" "$stale_home/.config" shared > "$tmp/stale-output.log" 2>&1
+cat "$tmp/stale-output.log"
+grep -Fq 'still contain old model skills: avoid-overengineering' "$tmp/stale-output.log"
+grep -Fq 'run install.sh on the host' "$tmp/stale-output.log"
+printf 'Stale shared model skills are reported: PASS\n'
 
 denied_home="$tmp/denied-home"
 mkdir -p "$denied_home/.config/opencode/skills"

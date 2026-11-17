@@ -9,7 +9,7 @@
 在宿主机或容器内均运行同一个[安装脚本](install.sh)，脚本自动识别环境：
 
 - 宿主机：只安装技能到 `~/.local/state/sandboxes/sandboxes/agent-skills`，供新容器只读挂载。
-- 容器：独立管理配置、规则和插件；技能目录只读时保持不变，没有只读挂载的旧容器仍安装本地技能。
+- 容器：独立管理配置、规则、插件和模型专用约束；技能目录只读时保持不变，没有只读挂载的旧容器仍安装本地技能。容器无法清理只读共享技能中的旧副本，发现时会提示在宿主机重新运行安装脚本。
 
 安装会覆盖同名文件；容器内还会合并配置，将全局 Git 身份设为脚本中的个人配置，将全局 Git 忽略文件覆盖为仅含 `.opencode` 和 `.codex` 的内容。执行前请核对设置并备份需要保留的内容。
 
@@ -24,7 +24,9 @@
 - [配置模板](templates/opencode.json)：模型服务与会话整理配置。
 - [全局规则](AGENTS.global.md)：安装为用户级 `AGENTS.md`，约定 Agent 的协作与工程行为。
 - [技能](skills/)：按任务选用的能力包，用法见各目录的 `SKILL.md`；例如 [Git 操作](skills/git/SKILL.md)、[技术写作](skills/write-docs/SKILL.md)和[独立事故审查](skills/review-incident/SKILL.md)。
+- [模型专用约束](models-md/)：按 models-md 的文件名约定组织，安装器原样复制到配置目录；不作为技能注册。
 - [cap-context 插件](plugins/cap-context.ts)：限制部分模型的上下文与输入上限。
+- [models-md 插件](https://github.com/acramsay/opencode-models-md)：每次模型请求前注入匹配的约束正文：`gpt-6-*` 加载 `avoid-overengineering`，`claude-fable-5-2` 加载 `calibrate-fable`，`claude-opus-5-5` 加载 `constrain-opus`（包括连字符后缀变体及跨 provider 路由）。文件名按连字符边界匹配，`gpt-6.1-sol` 这类点号版本不会匹配 `gpt-6.md`。安装器把 `models-md/` 复制到配置目录；修改后重新安装。这些约束不能通过技能工具显式调用。
 - [备份脚本](backup.sh)：备份和恢复 OpenCode 用户数据，用于容器间迁移。
 
 ## 备份与迁移
@@ -46,3 +48,5 @@
 维护约定见仓库级 [AGENTS.md](AGENTS.md)，全局规则的设计依据见[设计说明](docs/agent-rule-rationale.md)。
 
 验证入口：安装行为用 `./scripts/verify-opencode-install.sh`（需要 Linux、bubblewrap 和免密码 `sudo`，使用隔离 HOME 与真实只读挂载），事故取证脚本用 `./scripts/verify-incident-export.sh`。这些检查不验证实际模型或 API 服务的可用性。
+
+模型规则注入用 `bun test scripts/verify-model-instructions.test.ts`（需要 Bun、OpenCode V2 和 npm registry 网络访问）。它使用隔离 HOME、本地接口替身和发布版插件，捕获真实出站请求；输出保存在 `.opencode/runs/models-md.*/`，不调用真实模型。可用 `MODELS_MD_TEST_CACHE=/absolute/path` 复用一次验证的包缓存，避免重复下载依赖。

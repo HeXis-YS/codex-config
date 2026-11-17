@@ -44,6 +44,7 @@ if "$container"; then
     for source in templates/opencode.json AGENTS.global.md; do
         [ -f "$script_dir/$source" ] || die "missing $source"
     done
+    [ -d "$script_dir/models-md" ] || die 'missing models-md'
     jq -e 'type == "object" and (has("$schema") | not) and (has("mcp") | not)' \
         "$script_dir/templates/opencode.json" >/dev/null || die 'invalid opencode.json'
     [ -f "$script_dir/plugins/cap-context.ts" ] || die 'missing cap-context.ts plugin'
@@ -67,12 +68,18 @@ install_skills() {
         mkdir -p "$skills_target/${skill##*/}"
         cp -a "$skill/." "$skills_target/${skill##*/}/"
     done
-    # The merged skill replaces these two previously installed entrypoints.
-    for obsolete in record-incident score-incident; do
+    # The merged skill replaces record-incident/score-incident; the three model
+    # instructions now live outside the skills directory.
+    for obsolete in record-incident score-incident \
+        avoid-overengineering calibrate-fable constrain-opus; do
         dir="$skills_target/$obsolete"
         rm -f -- "$dir/SKILL.md"
+        if [ -f "$dir/references/verification.md" ]; then
+            rm -f -- "$dir/references/verification.md"
+            rmdir --ignore-fail-on-non-empty -- "$dir/references" 2>/dev/null || true
+        fi
         if [ -d "$dir" ]; then
-            rmdir --ignore-fail-on-non-empty -- "$dir"
+            rmdir --ignore-fail-on-non-empty -- "$dir" 2>/dev/null || true
         fi
     done
     printf 'Installed skills to %s\n' "$skills_target"
@@ -109,10 +116,10 @@ jq -n --argjson existing "$existing" \
     then error("invalid OpenCode configuration")
     else
         ($current[0] // {})
-        # Remove the previously managed task plugin while retaining unrelated entries.
+        # Remove the old task plugin and replace our model plugin without duplicates.
         | (.plugins // [] | map(select(
             (if type == "string" then . else .package end)
-            | test("^opencode-orchestrator(@|$)") | not
+            | test("^(opencode-orchestrator|@acramsay/opencode-models-md)(@|$)") | not
         ))) as $plugins
         | overlay($update[0])
         | .plugins = ($plugins + $update[0].plugins)
@@ -121,9 +128,32 @@ jq -n --argjson existing "$existing" \
 chmod 0600 "$merged"
 mv -f -- "$merged" "$config"
 install -m 0644 "$script_dir/AGENTS.global.md" "$target/AGENTS.md"
+# Model instructions mirror the models-md layout in the config directory; the
+# plugin reads them on each request and never registers them as skills.
+mkdir -p "$target/models-md"
+# Remove artifacts from earlier layouts: copied model bodies and a separate
+# reference file that now lives inside gpt-6.md.
+if [ -d "$target/model-skills" ]; then
+    rm -rf -- "$target/model-skills"
+fi
+rm -f -- "$target/models-md/references/verification.md" "$target/models-md/gpt.md"
+rmdir --ignore-fail-on-non-empty -- "$target/models-md/references" 2>/dev/null || true
+cp -a "$script_dir/models-md/." "$target/models-md/"
 if "$manage_skills"; then
     install_skills
 else
+    # A read-only mount may predate the move to models-md; only the host can
+    # remove those copies, and until then they would also be exposed as skills.
+    stale=
+    for skill in avoid-overengineering calibrate-fable constrain-opus; do
+        if [ -e "$skills_target/$skill" ]; then
+            stale="$stale $skill"
+        fi
+    done
+    if [ -n "$stale" ]; then
+        printf 'install.sh: shared skills still contain old model skills:%s\n' "$stale" >&2
+        printf 'install.sh: run install.sh on the host to remove them.\n' >&2
+    fi
     printf 'Shared skills at %s are mounted read-only; left unchanged.\n' "$skills_target"
 fi
 mkdir -p "$target/plugins"
