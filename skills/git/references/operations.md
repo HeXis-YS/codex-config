@@ -2,19 +2,21 @@
 
 按需要阅读对应部分。以下命令说明语义与用法，不构成执行授权；示例中的占位符须替换为已核实的对象。参数支持以本机 Git 版本为准。
 
+提交参数统一使用已核实的完整 hash；下文的 `<commit-oid>`、`<before-oid>`、`<source-oid>` 等均表示完整 commit hash。可用 `git status --porcelain=v2 --branch` 获取当前提交 hash，用 `git show-ref` 或 `git reflog --format=%H` 查找候选，再按具体 hash 检查内容。引用查询用于确定对象，不将符号或相对引用直接带入后续提交操作。
+
 ## HEAD、index 与工作区
 
 | 操作 | 改变的状态 |
 | --- | --- |
 | `git add -- <path>` | 把工作区对应内容写入 index；通常包含该路径全部当前修改 |
 | `git commit` | 默认从整个 index 创建提交，并更新当前分支或 detached HEAD |
-| `git restore --staged -- <path>` | 默认从 HEAD 恢复对应 index 内容，不改变工作区 |
+| `git restore --source=<commit-oid> --staged -- <path>` | 从明确提交恢复对应 index 内容，不改变工作区 |
 | `git restore -- <path>` | 默认从 index 恢复工作区，覆盖对应未暂存修改 |
-| `git restore --source=<tree> --staged --worktree -- <path>` | 同时恢复 index 与工作区；源中没有的跟踪路径可被删除 |
-| `git reset --soft <commit>` | 移动当前分支或 detached HEAD，保留 index 和工作区 |
-| `git reset --mixed <commit>` | 移动引用并重置 index，保留工作区 |
-| `git reset --hard <commit>` | 移动引用并重置 index 和工作区，也可能覆盖妨碍写入的未跟踪内容 |
-| `git revert <commit>` | 通过新提交反转指定提交的效果；可能冲突，不保证后续代码语义正确 |
+| `git restore --source=<commit-oid> --staged --worktree -- <path>` | 同时恢复 index 与工作区；源中没有的跟踪路径可被删除 |
+| `git reset --soft <commit-oid>` | 移动当前分支或 detached HEAD，保留 index 和工作区 |
+| `git reset --mixed <commit-oid>` | 移动引用并重置 index，保留工作区 |
+| `git reset --hard <commit-oid>` | 移动引用并重置 index 和工作区，也可能覆盖妨碍写入的未跟踪内容 |
+| `git revert <commit-oid>` | 通过新提交反转指定提交的效果；可能冲突，不保证后续代码语义正确 |
 
 取消暂存虽不改变工作区，也可能丢掉“只存在于 index 的版本”或已有差异块选择；不能把它当作不改变用户状态的查询操作。
 
@@ -43,7 +45,7 @@
 | 用于丢弃内容的 restore/checkout | 没有通用 dry-run；比较指定来源和实际恢复位置，区分仅 index、仅工作区或两者，检查源中缺失而将被删除的路径 |
 | amend/rebase、引用或 worktree 删除 | 检查涉及的提交范围、引用可达性和工作区状态，列明将重写或删除的对象；仅查看目录名或最新提交不足以代替预检 |
 
-检查 reset 时，可按目标使用 `git log <target>..HEAD`、`git diff --cached <target>`、`git diff <target>` 及带路径限制的比较，但要根据具体模式解释结果：这些命令分别展示提交集合或内容差异，不是完整的 reset 模拟器。`--hard` 还可能覆盖阻碍目标文件写入的未跟踪内容，普通 diff 不覆盖此类文件；涉及忽略文件、子模块或冲突状态时须补充相应检查，无法确认则停止。
+检查 reset 时，可按目标使用 `git log <target-oid>..<before-oid>`、`git diff --cached <target-oid>`、`git diff <target-oid>` 及带路径限制的比较，但要根据具体模式解释结果：这些命令分别展示提交集合或内容差异，不是完整的 reset 模拟器。`--hard` 还可能覆盖阻碍目标文件写入的未跟踪内容，普通 diff 不覆盖此类文件；涉及忽略文件、子模块或冲突状态时须补充相应检查，无法确认则停止。
 
 dry-run 不保证稍后的操作一定成功，也不锁住状态；例如推送的远端检查和 hooks 可能只在正式执行时完成。等效预检必须明确标为只读影响检查，不声称执行了不存在的 `reset --dry-run`。
 
@@ -58,8 +60,8 @@ git rev-parse --verify refs/heads/<new-backup-branch>
 
 第二条命令的结果必须等于记录的 `<before-oid>`。创建备份分支不需要切换工作区。
 
-- reset、amend、rebase 等当前历史操作通常从执行前 HEAD 建立备份。
-- 删除其他分支或替换远端历史时，备份应指向被删除或替换端点，不能仅备份当前 HEAD。必要时先获取该提交对象；操作只影响文件时也按主体要求新建当前 HEAD 的备份分支。
+- reset、amend、rebase 等当前历史操作通常用执行前当前提交的完整 hash 建立备份。
+- 删除其他分支或替换远端历史时，备份应指向被删除或替换端点的完整 hash，不能仅备份当前提交。必要时先获取该提交对象；操作只影响文件时也按主体要求为当前提交新建备份分支。
 - unborn branch 无法直接 stash 或创建备份分支。若采用已获授权的临时提交保存改动，可在该提交上新建备份分支；否则停止并说明尚无可备份的提交，不能伪称备份完成。
 - stash 或临时提交未覆盖、但预检显示会丢失的内容，须另存到操作范围外。需要保留暂存状态时，同时保存 index 对应版本及恢复依据；只导出普通 `git diff` 不包含仅暂存版本、未跟踪或忽略文件的全部状态。
 - 记录备份分支、OID 和额外备份位置，核对可读取且覆盖所需内容。恢复方法必须与备份内容对应；操作完成不自动删除备份。
@@ -89,7 +91,7 @@ git rev-parse --verify refs/heads/<new-backup-branch>
 
 - 整合前核对源、目标、提交范围及相关 worktree 的归属和未提交内容。不默认远端叫 `origin`、目标叫 `main`，也不把 upstream 当作功能分支的合并基线。
 - 需要远端现状时获取相应引用；fetch 不代表整合或覆盖历史的授权。本地提交不固定附带 fetch/pull。
-- 按用户和项目约定选择 fast-forward、merge、rebase 或 cherry-pick。`pull` 会获取并整合，受参数和配置影响；先确定策略，不用裸 `pull` 试到成功。
+- 按用户和项目约定选择 fast-forward、merge、rebase 或 cherry-pick。需要获取远端更新时先 fetch，再核实取得的 commit hash 后整合；`pull` 将获取与整合合并，无法在两步之间核实提交，改用上述分步流程。
 - 重写历史前核实提交、消费者与授权；冲突处理读取[进行中的操作与冲突](#进行中的操作与冲突)。整合后验证实际结果，整合前的测试不能直接证明组合后的树有效，按实际变化决定复测范围。
 - 推送前检查远端地址、源提交、目标引用及全部将发布的可达提交，不仅检查最近一条。非 fast-forward 拒绝后先调查分叉，不自动升级为强推。
 - 授权重写远端时审查被替换的历史，并绑定已审查目标 OID 使用 lease；lease 只保护状态一致性，不代表覆盖内容已获授权。
@@ -101,9 +103,9 @@ git branch --show-current
 git worktree list --porcelain
 git remote -v
 git branch -vv
-git log --oneline <target>..<source>
-git log --left-right --oneline <target>...<source>
-git diff <target>...<source>
+git log --oneline <target-oid>..<source-oid>
+git log --left-right --oneline <target-oid>...<source-oid>
+git diff <target-oid>...<source-oid>
 ```
 
 - `branch --show-current` 为空可能表示 detached HEAD，需结合 status 判断。
@@ -114,13 +116,13 @@ git diff <target>...<source>
 推送用已确认的远端和目标引用表达意图，例如：
 
 ```bash
-git push <remote> HEAD:refs/heads/<target>
+git push <remote> <source-oid>:refs/heads/<target>
 ```
 
 仅当已授权替换远端历史、并审查了远端当前提交 `<expected-oid>` 时，才考虑：
 
 ```bash
-git push --force-with-lease=refs/heads/<target>:<expected-oid> <remote> HEAD:refs/heads/<target>
+git push --force-with-lease=refs/heads/<target>:<expected-oid> <remote> <source-oid>:refs/heads/<target>
 ```
 
 未显式指定预期值的 lease 依赖本地远端跟踪引用，后台 fetch 可改变该依据。显式 lease 失败说明状态已变，应重新调查，不自动更新预期值再试。
