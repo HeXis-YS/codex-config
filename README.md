@@ -4,7 +4,7 @@
 
 ## 安装
 
-宿主机需要 Bash 和常用文件工具；容器内还需要 OpenCode 2 CLI、Git、`jq` 和 `findmnt`（util-linux）。容器安装前检查[配置模板](templates/opencode.json)中的服务地址与凭据。
+宿主机需要 Bash 和常用文件工具；容器内还需要 Git、`jq` 和 `findmnt`（util-linux）。容器中没有 OpenCode 2 CLI 时，安装脚本会用 `curl` 下载安装，需要网络访问。容器安装前检查[配置模板](templates/opencode.json)中的服务地址与凭据。
 
 在宿主机或容器内均运行同一个[安装脚本](install.sh)，脚本自动识别环境：
 

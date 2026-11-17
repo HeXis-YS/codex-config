@@ -24,7 +24,13 @@ fi
 
 manage_skills=true
 if "$container"; then
-    command -v opencode >/dev/null || die 'opencode command not found'
+    if ! command -v opencode >/dev/null; then
+        command -v curl >/dev/null || die 'curl command not found'
+        curl -fsSL https://opencode.ai/v2/install | bash
+        PATH="$HOME/.opencode/bin:$PATH"
+        export PATH
+        command -v opencode >/dev/null || die 'opencode installation failed'
+    fi
     command -v jq >/dev/null || die 'jq command not found'
     command -v git >/dev/null || die 'git command not found'
     command -v findmnt >/dev/null || die 'findmnt command not found'
