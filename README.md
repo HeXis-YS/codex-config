@@ -11,7 +11,7 @@
 - 宿主机：只安装技能到 `~/.local/state/sandboxes/sandboxes/agent-skills`，供新容器只读挂载。
 - 容器：独立管理配置、规则、插件和模型专用约束；技能目录只读时保持不变，没有只读挂载的旧容器仍安装本地技能。容器无法清理只读共享技能中的旧副本，发现时会提示在宿主机重新运行安装脚本。
 
-安装会覆盖同名文件；容器内会用[配置模板](templates/opencode.json)直接覆盖 `opencode.json`，将全局 Git 身份设为脚本中的个人配置，将全局 Git 忽略文件覆盖为仅含 `.opencode` 和 `.codex` 的内容。执行前请核对设置并备份需要保留的内容。
+安装会覆盖同名文件；容器内会用[配置模板](templates/opencode.json)直接覆盖 `opencode.json`，将全局 Git 身份设为脚本中的个人配置，并向全局 Git 忽略文件追加 `.opencode` 和 `.codex`。已配置 `core.excludesFile` 时使用该文件，否则使用 `$XDG_CONFIG_HOME/git/ignore`；已有条目不会重复添加。执行前请核对设置并备份需要保留的内容。
 
 ```bash
 ./install.sh

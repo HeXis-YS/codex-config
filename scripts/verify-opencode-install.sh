@@ -102,6 +102,8 @@ before="$tmp/installed-config.json"
 cp "$target/opencode.json" "$before"
 run_install "$home" "$home/.config" legacy
 cmp "$before" "$target/opencode.json"
+[ "$(grep -Fxc '.opencode' "$home/.config/git/ignore")" -eq 1 ]
+[ "$(grep -Fxc '.codex' "$home/.config/git/ignore")" -eq 1 ]
 
 # First installation must also work without an existing configuration or skills directory.
 mkdir -p "$tmp/fresh-config"
@@ -115,6 +117,22 @@ if run_install "$home" "$home/.config" legacy --profile highgo > /dev/null 2>&1;
     exit 1
 fi
 cmp "$root/AGENTS.global.md" "$target/AGENTS.md"
+
+# A configured global excludes file is used instead of the default, keeps its
+# contents, and gains each missing entry only once.
+configured_home="$tmp/configured-home"
+mkdir -p "$configured_home"
+HOME="$configured_home" XDG_CONFIG_HOME="$configured_home/.config" \
+    git config --global core.excludesFile '~/custom-ignore'
+printf 'personal-ignore' > "$configured_home/custom-ignore"
+run_install "$configured_home" "$configured_home/.config" legacy
+grep -Fqx 'personal-ignore' "$configured_home/custom-ignore"
+grep -Fqx '.opencode' "$configured_home/custom-ignore"
+grep -Fqx '.codex' "$configured_home/custom-ignore"
+[ ! -e "$configured_home/.config/git/ignore" ]
+run_install "$configured_home" "$configured_home/.config" legacy
+[ "$(grep -Fxc '.opencode' "$configured_home/custom-ignore")" -eq 1 ]
+[ "$(grep -Fxc '.codex' "$configured_home/custom-ignore")" -eq 1 ]
 printf 'Legacy container installation checks passed.\n'
 
 host_home="$tmp/host-home"
