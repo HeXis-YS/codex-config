@@ -27,11 +27,11 @@
 - [模型专用约束](models-md/)：按 models-md 的文件名约定组织，安装器原样复制到配置目录；不作为技能注册。
 - [cap-context 插件](plugins/cap-context.ts)：限制部分模型的上下文与输入上限。
 - [models-md 插件](https://github.com/acramsay/opencode-models-md)：每次模型请求前注入匹配的约束正文：`gpt-6-*` 加载 `avoid-overengineering`，`claude-fable-5-2` 加载 `calibrate-fable`，`claude-opus-5-5` 加载 `constrain-opus`（包括连字符后缀变体及跨 provider 路由）。文件名按连字符边界匹配，`gpt-6.1-sol` 这类点号版本不会匹配 `gpt-6.md`。安装器把 `models-md/` 复制到配置目录；修改后重新安装。这些约束不能通过技能工具显式调用。
-- [备份脚本](backup.sh)：备份和恢复 OpenCode 用户数据，用于容器间迁移。
+- [备份脚本](backup.sh)：备份和恢复 OpenCode 用户数据与状态，用于容器间迁移。
 
 ## 备份与迁移
 
-在容器之间迁移 OpenCode 会话数据时，直接打包 `XDG_DATA_HOME/opencode`（默认 `~/.local/share/opencode`）：
+在容器之间迁移 OpenCode 会话数据时，直接打包 `XDG_DATA_HOME/opencode`（默认 `~/.local/share/opencode`）和 `XDG_STATE_HOME/opencode`（默认 `~/.local/state/opencode`）：
 
 ```bash
 # 源容器
@@ -41,7 +41,7 @@
 ./backup.sh restore /path/to/opencode-backup.tar.gz
 ```
 
-脚本会在备份和恢复前自动停止 OpenCode 服务。归档包含会话数据库、凭据、shell 快照和工具输出；配置和技能由 `install.sh` 单独安装。归档含敏感数据，请妥善保管。
+脚本会在备份和恢复前自动停止 OpenCode 服务。归档包含数据目录中的会话数据库、凭据、shell 快照和工具输出，以及状态目录中的模型选择、提示历史和终端状态等；配置和技能由 `install.sh` 单独安装。归档含敏感数据，请妥善保管。
 
 ## 维护
 
