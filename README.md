@@ -26,7 +26,7 @@
 - [技能](skills/)：按任务选用的能力包，用法见各目录的 `SKILL.md`；例如 [Git 操作](skills/git/SKILL.md)、[技术写作](skills/write-docs/SKILL.md)和[独立事故审查](skills/review-incident/SKILL.md)。
 - [模型专用约束](models-md/)：按 models-md 的文件名约定组织，安装器原样复制到配置目录；不作为技能注册。
 - [cap-context 插件](plugins/cap-context.ts)：限制部分模型的上下文与输入上限。
-- [models-md 插件](https://github.com/acramsay/opencode-models-md)：每次模型请求前注入匹配的约束正文：`gpt-6-*` 加载 `avoid-overengineering`，`claude-fable-5-2` 加载 `calibrate-fable`，`claude-opus-5-5` 加载 `constrain-opus`（包括连字符后缀变体及跨 provider 路由）。文件名按连字符边界匹配，`gpt-6.1-sol` 这类点号版本不会匹配 `gpt-6.md`。安装器把 `models-md/` 复制到配置目录；修改后重新安装。这些约束不能通过技能工具显式调用。
+- [models-md 插件](https://github.com/acramsay/opencode-models-md)：每次模型请求前注入匹配的约束正文：`gpt-6` 注入 [`gpt-6.md`](models-md/gpt-6.md)，`claude-fable-5-2` 注入 [`claude-fable-5-2.md`](models-md/claude-fable-5-2.md)，`claude-opus-5-5` 注入 [`claude-opus-5-5.md`](models-md/claude-opus-5-5.md)（均包含 `-*` 连字符后缀变体及跨 provider 路由）。文件名按连字符边界匹配，`gpt-6.1-sol` 这类点号版本不会匹配 `gpt-6.md`。安装器把 `models-md/` 复制到配置目录；修改后重新安装。这些约束不能通过技能工具显式调用。
 - [备份脚本](backup.sh)：备份和恢复 OpenCode 用户数据与状态，用于容器间迁移。
 
 ## 备份与迁移
