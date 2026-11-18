@@ -31,7 +31,6 @@ if "$container"; then
         export PATH
         command -v opencode >/dev/null || die 'opencode installation failed'
     fi
-    command -v jq >/dev/null || die 'jq command not found'
     command -v git >/dev/null || die 'git command not found'
     command -v findmnt >/dev/null || die 'findmnt command not found'
     target="${XDG_CONFIG_HOME:-$HOME/.config}/opencode"
@@ -51,8 +50,6 @@ if "$container"; then
         [ -f "$script_dir/$source" ] || die "missing $source"
     done
     [ -d "$script_dir/models-md" ] || die 'missing models-md'
-    jq -e 'type == "object" and (has("$schema") | not) and (has("mcp") | not)' \
-        "$script_dir/templates/opencode.json" >/dev/null || die 'invalid opencode.json'
     [ -f "$script_dir/plugins/cap-context.ts" ] || die 'missing cap-context.ts plugin'
 else
     skills_target="$HOME/.local/state/sandboxes/sandboxes/agent-skills"
@@ -100,39 +97,8 @@ mkdir -p "$target"
 config="$target/opencode.json"
 if [ -e "$config" ]; then
     [ -f "$config" ] || die "not a regular file: $config"
-    source_config="$config"
-    existing=true
-else
-    source_config=/dev/null
-    existing=false
 fi
-# A temporary output is necessary to merge without truncating the input file.
-merged="$(mktemp "$target/.opencode.json.XXXXXX")"
-trap 'rm -f -- "$merged"' EXIT
-jq -n --argjson existing "$existing" \
-    --slurpfile current "$source_config" \
-    --slurpfile update "$script_dir/templates/opencode.json" '
-    def overlay($patch):
-        reduce ($patch | keys_unsorted[]) as $key (.;
-            .[$key] = (if (.[$key] | type) == "object" and ($patch[$key] | type) == "object"
-                      then .[$key] | overlay($patch[$key])
-                      else $patch[$key] end));
-    if ($update | length) != 1 or ($existing and ($current | length) != 1)
-       or ($existing and ($current[0] | type) != "object")
-    then error("invalid OpenCode configuration")
-    else
-        ($current[0] // {})
-        # Remove the old task plugin and replace our model plugin without duplicates.
-        | (.plugins // [] | map(select(
-            (if type == "string" then . else .package end)
-            | test("^(opencode-orchestrator|@acramsay/opencode-models-md)(@|$)") | not
-        ))) as $plugins
-        | overlay($update[0])
-        | .plugins = ($plugins + $update[0].plugins)
-    end
-' > "$merged" || die "could not merge $config"
-chmod 0600 "$merged"
-mv -f -- "$merged" "$config"
+install -m 0600 "$script_dir/templates/opencode.json" "$config"
 install -m 0644 "$script_dir/AGENTS.global.md" "$target/AGENTS.md"
 # Model instructions mirror the models-md layout in the config directory; the
 # plugin reads them on each request and never registers them as skills.

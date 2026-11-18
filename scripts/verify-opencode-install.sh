@@ -66,9 +66,7 @@ mkdir -p "$home/.config/opencode/model-skills/avoid-overengineering" \
 printf 'old copy\n' > "$home/.config/opencode/model-skills/avoid-overengineering/SKILL.md"
 printf 'old reference\n' > "$home/.config/opencode/models-md/references/verification.md"
 printf 'old name\n' > "$home/.config/opencode/models-md/gpt.md"
-cat > "$home/.config/opencode/opencode.json" <<'JSON'
-{"$schema":"https://opencode.ai/config.json","mcp":{"servers":{"personal":{"type":"remote","url":"https://example.com/mcp"}}},"providers":{"openai":{"settings":{"baseURL":"https://old.example","timeout":1234}}},"plugins":["personal-plugin","opencode-orchestrator@2.0.20","opencode-orchestrator",{"package":"@acramsay/opencode-models-md@0.0.0"},"@acramsay/opencode-models-md",{"package":"@personal/extra@1.2.0","options":{"keep":true}}],"unrelated":true}
-JSON
+printf '{"personal":true}\n' > "$home/.config/opencode/opencode.json"
 
 run_install "$home" "$home/.config" legacy
 target="$home/.config/opencode"
@@ -92,23 +90,7 @@ done
 [ ! -e "$target/models-md/gpt.md" ]
 grep -q '^#### 新增测试的依据$' "$target/models-md/gpt-6.md"
 cmp "$root/plugins/cap-context.ts" "$target/plugins/cap-context.ts"
-jq -e --slurpfile template "$root/templates/opencode.json" '
-    .["$schema"] == "https://opencode.ai/config.json"
-    and .mcp.servers.personal.url == "https://example.com/mcp"
-    and .unrelated == true
-    and .providers.openai.settings.timeout == 1234
-    and (.providers | keys == ["anthropic", "deepseek", "google", "openai"])
-    and (.providers.openai.settings.apiKey | type == "string" and length > 0 and (startswith("{env:") | not))
-    and .providers.anthropic.settings.apiKey == .providers.openai.settings.apiKey
-    and .providers.google.settings.baseURL == "https://api.openlux.ai/v1beta"
-    and .providers.google.settings.apiKey == .providers.openai.settings.apiKey
-    and (.providers.deepseek.settings.apiKey | type == "string" and length > 0 and (startswith("{env:") | not))
-    and .compaction.buffer == "5%"
-    and .agents.title.model == "openai/gpt-6-luna"
-    and .agents.compaction.model == "openai/gpt-6-luna"
-    and .agents.summary.model == "openai/gpt-6-luna"
-    and .plugins == (["personal-plugin", {"package":"@personal/extra@1.2.0","options":{"keep":true}}] + $template[0].plugins)
-' "$target/opencode.json" >/dev/null
+cmp "$root/templates/opencode.json" "$target/opencode.json"
 [ "$(stat -c %a "$target/opencode.json")" = 600 ]
 grep -qx keep "$home/.codex/config.toml"
 grep -qx keep "$target/skills/personal/SKILL.md"
@@ -124,8 +106,7 @@ cmp "$before" "$target/opencode.json"
 # First installation must also work without an existing configuration or skills directory.
 mkdir -p "$tmp/fresh-config"
 run_install "$home" "$tmp/fresh-config" legacy
-jq -e --slurpfile template "$root/templates/opencode.json" '. == $template[0]' \
-    "$tmp/fresh-config/opencode/opencode.json" >/dev/null
+cmp "$root/templates/opencode.json" "$tmp/fresh-config/opencode/opencode.json"
 cmp "$root/AGENTS.global.md" "$tmp/fresh-config/opencode/AGENTS.md"
 grep -Fqx '.opencode' "$tmp/fresh-config/git/ignore"
 grep -Fqx '.codex' "$tmp/fresh-config/git/ignore"
@@ -169,16 +150,11 @@ for container in first second; do
     container_home="$tmp/$container-container"
     container_target="$container_home/.config/opencode"
     mkdir -p "$container_target/skills"
-    jq -n --arg plugin "$container-plugin" \
-        '{plugins: [$plugin], providers: {openai: {settings: {timeout: 5678}}}}' \
-        > "$container_target/opencode.json"
+    printf '{"personal":true}\n' > "$container_target/opencode.json"
     run_install "$container_home" "$container_home/.config" shared > "$tmp/$container-output.log"
     cat "$tmp/$container-output.log"
     grep -Fq 'mounted read-only; left unchanged.' "$tmp/$container-output.log"
-    jq -e --arg plugin "$container-plugin" --slurpfile template "$root/templates/opencode.json" \
-        '.plugins == ([$plugin] + $template[0].plugins) and .providers.openai.settings.timeout == 5678
-         and .providers.google.settings.baseURL == "https://api.openlux.ai/v1beta"' \
-        "$container_target/opencode.json" >/dev/null
+    cmp "$root/templates/opencode.json" "$container_target/opencode.json"
     cmp "$root/AGENTS.global.md" "$container_target/AGENTS.md"
     cmp "$root/plugins/cap-context.ts" "$container_target/plugins/cap-context.ts"
     # Model instructions are installed locally even when shared skills are read-only.

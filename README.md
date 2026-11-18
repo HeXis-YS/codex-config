@@ -4,14 +4,14 @@
 
 ## 安装
 
-宿主机需要 Bash 和常用文件工具；容器内还需要 Git、`jq` 和 `findmnt`（util-linux）。容器中没有 OpenCode 2 CLI 时，安装脚本会用 `curl` 下载安装，需要网络访问。容器安装前检查[配置模板](templates/opencode.json)中的服务地址与凭据。
+宿主机需要 Bash 和常用文件工具；容器内还需要 Git 和 `findmnt`（util-linux）。容器中没有 OpenCode 2 CLI 时，安装脚本会用 `curl` 下载安装，需要网络访问。容器安装前检查[配置模板](templates/opencode.json)中的服务地址与凭据。
 
 在宿主机或容器内均运行同一个[安装脚本](install.sh)，脚本自动识别环境：
 
 - 宿主机：只安装技能到 `~/.local/state/sandboxes/sandboxes/agent-skills`，供新容器只读挂载。
 - 容器：独立管理配置、规则、插件和模型专用约束；技能目录只读时保持不变，没有只读挂载的旧容器仍安装本地技能。容器无法清理只读共享技能中的旧副本，发现时会提示在宿主机重新运行安装脚本。
 
-安装会覆盖同名文件；容器内还会合并配置，将全局 Git 身份设为脚本中的个人配置，将全局 Git 忽略文件覆盖为仅含 `.opencode` 和 `.codex` 的内容。执行前请核对设置并备份需要保留的内容。
+安装会覆盖同名文件；容器内会用[配置模板](templates/opencode.json)直接覆盖 `opencode.json`，将全局 Git 身份设为脚本中的个人配置，将全局 Git 忽略文件覆盖为仅含 `.opencode` 和 `.codex` 的内容。执行前请核对设置并备份需要保留的内容。
 
 ```bash
 ./install.sh
