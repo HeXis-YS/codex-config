@@ -133,20 +133,18 @@ install -m 0644 "$script_dir/plugins/cap-context.ts" "$target/plugins/cap-contex
 rm -f -- "$target/plugins/inject-model-skills.ts"
 git config --global user.email '40174982+HeXis-YS@users.noreply.github.com'
 git config --global user.name 'HeXis-YS'
-# Prefer the configured global excludes file; --path expands a leading ~.
-git_ignore_path="$(git config --global --path --get core.excludesFile 2>/dev/null || true)"
-if [ -z "$git_ignore_path" ]; then
-    git_ignore_path="${XDG_CONFIG_HOME:-$HOME/.config}/git/ignore"
-fi
-mkdir -p -- "$(dirname -- "$git_ignore_path")"
-for entry in .opencode .codex; do
-    if [ -f "$git_ignore_path" ] && grep -qxF -- "$entry" "$git_ignore_path"; then
-        continue
-    fi
-    # Avoid joining the new entry to a final line without a newline.
-    if [ -s "$git_ignore_path" ] && [ -n "$(tail -c 1 -- "$git_ignore_path")" ]; then
-        printf '\n' >> "$git_ignore_path"
-    fi
-    printf '%s\n' "$entry" >> "$git_ignore_path"
+# Keep both host ignore files aligned; do not infer the target from
+# core.excludesFile.
+for git_ignore_path in "$HOME/.gitignore_global" "$HOME/.gitignore_template"; do
+    for entry in .opencode .codex; do
+        if [ -f "$git_ignore_path" ] && grep -qxF -- "$entry" "$git_ignore_path"; then
+            continue
+        fi
+        # Avoid joining the new entry to a final line without a newline.
+        if [ -s "$git_ignore_path" ] && [ -n "$(tail -c 1 -- "$git_ignore_path")" ]; then
+            printf '\n' >> "$git_ignore_path"
+        fi
+        printf '%s\n' "$entry" >> "$git_ignore_path"
+    done
 done
 printf 'Installed OpenCode configuration, rules, and plugins to %s\n' "$target"

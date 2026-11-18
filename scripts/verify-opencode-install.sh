@@ -67,6 +67,10 @@ printf 'old copy\n' > "$home/.config/opencode/model-skills/avoid-overengineering
 printf 'old reference\n' > "$home/.config/opencode/models-md/references/verification.md"
 printf 'old name\n' > "$home/.config/opencode/models-md/gpt.md"
 printf '{"personal":true}\n' > "$home/.config/opencode/opencode.json"
+custom_ignore="$tmp/custom-ignore"
+HOME="$home" XDG_CONFIG_HOME="$home/.config" git config --global core.excludesFile "$custom_ignore"
+printf 'keep-global' > "$home/.gitignore_global"
+printf 'keep-template\n' > "$home/.gitignore_template"
 
 run_install "$home" "$home/.config" legacy
 target="$home/.config/opencode"
@@ -96,43 +100,38 @@ grep -qx keep "$home/.codex/config.toml"
 grep -qx keep "$target/skills/personal/SKILL.md"
 [ "$(HOME="$home" XDG_CONFIG_HOME="$home/.config" git config --global user.name)" = 'HeXis-YS' ]
 [ "$(HOME="$home" XDG_CONFIG_HOME="$home/.config" git config --global user.email)" = '40174982+HeXis-YS@users.noreply.github.com' ]
-grep -Fqx '.opencode' "$home/.config/git/ignore"
-grep -Fqx '.codex' "$home/.config/git/ignore"
+[ ! -e "$custom_ignore" ]
+[ ! -e "$home/.config/git/ignore" ]
+grep -Fqx 'keep-global' "$home/.gitignore_global"
+grep -Fqx 'keep-template' "$home/.gitignore_template"
+for ignore_file in "$home/.gitignore_global" "$home/.gitignore_template"; do
+    grep -Fqx '.opencode' "$ignore_file"
+    grep -Fqx '.codex' "$ignore_file"
+done
 before="$tmp/installed-config.json"
 cp "$target/opencode.json" "$before"
 run_install "$home" "$home/.config" legacy
 cmp "$before" "$target/opencode.json"
-[ "$(grep -Fxc '.opencode' "$home/.config/git/ignore")" -eq 1 ]
-[ "$(grep -Fxc '.codex' "$home/.config/git/ignore")" -eq 1 ]
+for ignore_file in "$home/.gitignore_global" "$home/.gitignore_template"; do
+    [ "$(grep -Fxc '.opencode' "$ignore_file")" -eq 1 ]
+    [ "$(grep -Fxc '.codex' "$ignore_file")" -eq 1 ]
+done
 
 # First installation must also work without an existing configuration or skills directory.
-mkdir -p "$tmp/fresh-config"
-run_install "$home" "$tmp/fresh-config" legacy
+fresh_home="$tmp/fresh-home"
+mkdir -p "$tmp/fresh-config" "$fresh_home"
+run_install "$fresh_home" "$tmp/fresh-config" legacy
 cmp "$root/templates/opencode.json" "$tmp/fresh-config/opencode/opencode.json"
 cmp "$root/AGENTS.global.md" "$tmp/fresh-config/opencode/AGENTS.md"
-grep -Fqx '.opencode' "$tmp/fresh-config/git/ignore"
-grep -Fqx '.codex' "$tmp/fresh-config/git/ignore"
+for ignore_file in "$fresh_home/.gitignore_global" "$fresh_home/.gitignore_template"; do
+    grep -Fqx '.opencode' "$ignore_file"
+    grep -Fqx '.codex' "$ignore_file"
+done
 if run_install "$home" "$home/.config" legacy --profile highgo > /dev/null 2>&1; then
     printf 'legacy --profile option unexpectedly accepted\n' >&2
     exit 1
 fi
 cmp "$root/AGENTS.global.md" "$target/AGENTS.md"
-
-# A configured global excludes file is used instead of the default, keeps its
-# contents, and gains each missing entry only once.
-configured_home="$tmp/configured-home"
-mkdir -p "$configured_home"
-HOME="$configured_home" XDG_CONFIG_HOME="$configured_home/.config" \
-    git config --global core.excludesFile '~/custom-ignore'
-printf 'personal-ignore' > "$configured_home/custom-ignore"
-run_install "$configured_home" "$configured_home/.config" legacy
-grep -Fqx 'personal-ignore' "$configured_home/custom-ignore"
-grep -Fqx '.opencode' "$configured_home/custom-ignore"
-grep -Fqx '.codex' "$configured_home/custom-ignore"
-[ ! -e "$configured_home/.config/git/ignore" ]
-run_install "$configured_home" "$configured_home/.config" legacy
-[ "$(grep -Fxc '.opencode' "$configured_home/custom-ignore")" -eq 1 ]
-[ "$(grep -Fxc '.codex' "$configured_home/custom-ignore")" -eq 1 ]
 printf 'Legacy container installation checks passed.\n'
 
 host_home="$tmp/host-home"
