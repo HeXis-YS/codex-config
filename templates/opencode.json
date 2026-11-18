@@ -13,6 +13,12 @@
     },
     "summary": {
       "model": "openai/gpt-6-luna"
+    },
+    "general": {
+      "model": "openrouter/deepseek/deepseek-v4.1-flash-1017"
+    },
+    "explore": {
+      "model": "openrouter/deepseek/deepseek-v4.1-flash-1017"
     }
   },
   "providers": {

@@ -21,7 +21,7 @@
 
 ## 内容
 
-- [配置模板](templates/opencode.json)：模型服务与会话整理配置。
+- [配置模板](templates/opencode.json)：模型服务、会话整理与子代理默认模型配置。
 - [全局规则](AGENTS.global.md)：安装为用户级 `AGENTS.md`，约定 Agent 的协作与工程行为。
 - [技能](skills/)：按任务选用的能力包，用法见各目录的 `SKILL.md`；例如 [Git 操作](skills/git/SKILL.md)、[技术写作](skills/write-docs/SKILL.md)和[独立事故审查](skills/review-incident/SKILL.md)。
 - [模型专用约束](models-md/)：按 models-md 的文件名约定组织，安装器原样复制到配置目录；不作为技能注册。
