@@ -120,6 +120,7 @@ test("published models-md injects only the matching installed skill into real re
   }
   for (const agent of Object.keys(config.agents)) config.agents[agent].model = "mock/gpt-6.1-sol"
   // Runtime checks only the published package, not unrelated local plugins.
+  await Bun.file(join(env.XDG_CONFIG_HOME, "opencode", "plugins", "adopt-catalog.ts")).delete()
   const localPlugin = join(env.XDG_CONFIG_HOME, "opencode", "plugins", "cap-context.ts")
   await Bun.file(localPlugin).delete()
   rmSync(join(env.XDG_CONFIG_HOME, "opencode", "plugins", "commander"), { recursive: true, force: true })

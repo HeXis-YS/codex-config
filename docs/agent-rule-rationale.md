@@ -356,3 +356,15 @@ E3 执行循环、启动与接续核对、第二次执行前固化流程、必�
 - 通过 `ctx.session.hook("retry", ...)` 仅在非辅助代理（排除 `title`、`compaction`、`summary`）请求的模型精确为 `opencode/deepseek-v4.1-flash-free`，且错误属于额度不足或限流（`provider.free-limit`、`QuotaExceeded`、`RateLimit`、HTTP `402`/`429` 或相关错误代码与文本，排除上下文长度超限）时触发；校验目标模型在当前项目启用可用后调用 `ctx.session.switchModel` 切至 `openrouter/deepseek/deepseek-v4.1-flash-1017` 并立即触发当步零延迟重试。
 - 切换发生在单步内部重试阶段，不触发 `session.execution.failed`，不注入合成续写提示词，后台 `subagent` 仅在完成后向父会话返回唯一一条 `<subagent state="completed">`；其他模型（含 `glm-5.3-flash`、Claude、GPT、Gemini）与普通 5xx 错误保持原有行为。插件直接以会话自身的 `session.model` 判断是否已完成切换：若未来宿主版本未在同一步内重读新模型则立即终止重试避免死循环，后续手动切回免费模型后仍可正常再次触发回退；备用模型不可用时保持原样报错（fail-close）。不引入跨会话全局冷却状态：每次新建会话只承担首步一次轻量探测（约百毫秒级），单会话内后续多步直接沿用已切换的备用模型，且上游滚动窗口重置后新会话自动恢复使用免费模型，避免本地缓存与真实额度失步。
 - 实测确认上游 `FreeUsageLimitError`（HTTP `429`）的重置倒计时通过 `retry-after` 响应头传入 `error.retryAfterMs`（24 小时滚动窗口），正文仅含固定超限提示与推广文案；服务端提取上游错误描述时剥离尾部推广链接，并将 `retryAfterMs` 格式化为直观的剩余时长与本地预计重置时刻（兼容容器常见的 POSIX `TZ` 如 `CST-8` 与 IANA 时区），通过插件 RPC 事件通知同项目 TUI 刷新会话缓存并弹出 `warning` Toast。
+
+## 聚合渠道跨厂商目录继承（2026-11-23）
+
+对应制品：[`plugins/adopt-catalog.ts`](../plugins/adopt-catalog.ts)、[`templates/opencode.json`](../templates/opencode.json) 与 [`install.sh`](../install.sh)。
+
+**依据**：`vti`（`vps.town/connector/ai`）在单一凭据下同时暴露 OpenAI（`/v1`）、Anthropic（`/v1`）与 Google Gemini（`/v1beta`）三套原生接口，聚合了多家模型。OpenCode V2 的 `opencode.json` 仅在 provider 级别提供单一 `canonical` 字段，无法在同一个自定义 provider 下跨厂商继承多个内置目录；若在 `templates/opencode.json` 中手写复制各模型的 `capabilities`、`limit` 与 `variants`，不仅冗余，还会在 OpenCode 升级内置 `models.dev` 目录时失步。
+
+**决策与取舍**：在 `templates/opencode.json` 中新增单一 `vti` provider，模型列表仅以空对象 `{}` 显式声明所需模型，并新增零外部依赖的本地 V2 插件 `plugins/adopt-catalog.ts`：
+
+- 在 `ctx.model.transform` 中按 `model.id` / `model.modelID` 查找内置 `anthropic`、`google`、`openai` 源目录，直接继承匹配模型的完整定义（显示名、`family`、原生 `package`、多模态与工具能力、`variants`、`limit`、`cost`），并在命中 `google` 目录时自动将基础地址后缀切换为 `/v1beta`；未命中这三套目录的模型保留 `vti` 顶层的 `@opencode/ai/providers/openai-compatible` 运行时。
+- 插件文件命名为 `adopt-catalog.ts`，保持字典序早于 `cap-context.ts`，使执行顺序固定为：`adopt-catalog` 继承目录基础定义 → `cap-context` 收口 GPT 上下文及补齐缺失 `limit.input` → 内置 `opencode.config.provider` 叠加用户在 `opencode.json` 中声明的模型级覆盖（如 `modelID` 别名、`disabled`、`headers`）。
+- 作用域限定于 `vti`，不自动改写其他自定义 provider 的 `package` 与 `baseURL`，避免误将仅实现 `/v1/chat/completions` 的单协议网关切到 `/v1/messages` 或 `/v1beta`。

@@ -25,6 +25,7 @@
 - [全局规则](AGENTS.global.md)：安装为用户级 `AGENTS.md`，约定 Agent 的协作与工程行为。
 - [技能](skills/)：按任务选用的能力包，用法见各目录的 `SKILL.md`；例如 [Git 操作](skills/git/SKILL.md)、[技术写作](skills/write-docs/SKILL.md)和[独立事故审查](skills/review-incident/SKILL.md)。
 - [模型专用约束](models-md/)：按 models-md 的文件名约定组织，安装器原样复制到配置目录；不作为技能注册。
+- [adopt-catalog 插件](plugins/adopt-catalog.ts)：为聚合渠道 `vti` 下的模型按 ID 自动继承内置 `anthropic`、`google`、`openai` 目录的协议包、路径前缀、能力、思考档位与上限定义，无需在配置文件中复制模型参数。
 - [cap-context 插件](plugins/cap-context.ts)：限制部分模型的上下文与输入上限。
 - [commander 插件](plugins/commander/)：按会话手动开启或关闭指挥者模式；所有模型的新会话默认关闭，在 TUI 中通过 `/commander`（支持 `on`、`off`、`status`）或命令面板「切换指挥者模式」控制。开启后仅向当前主会话的模型请求注入指挥者提示词，不隐藏或拦截工具，也不向 `subagent` 子会话注入。
 - [deepseek-fallback 插件](plugins/deepseek-fallback/)：当会话请求 `opencode/deepseek-v4.1-flash-free` 返回免费额度不足或限流（如 `provider.free-limit`、`QuotaExceeded`、`RateLimit`、HTTP `402`/`429`）时，在当前请求的重试阶段原位切换到 `openrouter/deepseek/deepseek-v4.1-flash-1017`，并在 TUI 弹出携带上游错误信息与重置时间提示的 Toast；不影响其他模型、辅助摘要请求或普通 5xx 重试。
@@ -56,3 +57,5 @@
 指挥者模式插件用 `bun test scripts/verify-commander-plugin.test.ts`（需要 Bun 和 OpenCode V2）。它启动隔离的 OpenCode 服务端与本地模型替身，检验新会话默认关闭、按会话手动开关、跨会话隔离、`subagent` 子会话不继承及 TUI 命令交互；输出保存在 `.opencode/runs/commander.*/`，不调用真实模型或外部包源。
 
 DeepSeek 免费额度回退插件用 `bun test scripts/verify-deepseek-fallback.test.ts`（需要 Bun 和 OpenCode V2）。它在隔离服务端与本地模型替身下验证主会话与后台 `subagent` 的额度/限流原位切换、其他模型与非额度错误的隔离边界及 TUI Toast 通知；输出保存在 `.opencode/runs/deepseek-fallback.*/`，不调用真实模型或外部包源。
+
+聚合渠道目录继承插件用 `bun test scripts/verify-adopt-catalog.test.ts`（需要 Bun 和 OpenCode V2）。它在隔离服务端与本地多协议替身下验证 `vti` 跨厂商目录继承、`cap-context` 上限联动、配置覆盖优先级及实际请求路由；输出保存在 `.opencode/runs/adopt-catalog.*/`，不调用真实模型或外部包源。

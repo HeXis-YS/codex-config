@@ -96,6 +96,7 @@ done
 [ ! -e "$target/models-md/references" ]
 [ ! -e "$target/models-md/gpt.md" ]
 grep -q '^#### 新增测试的依据$' "$target/models-md/gpt-6.md"
+cmp "$root/plugins/adopt-catalog.ts" "$target/plugins/adopt-catalog.ts"
 cmp "$root/plugins/cap-context.ts" "$target/plugins/cap-context.ts"
 diff -r "$root/plugins/commander" "$target/plugins/commander"
 diff -r "$root/plugins/deepseek-fallback" "$target/plugins/deepseek-fallback"
@@ -128,6 +129,7 @@ mkdir -p "$tmp/fresh-config" "$fresh_home"
 run_install "$fresh_home" "$tmp/fresh-config" legacy
 cmp "$root/templates/opencode.json" "$tmp/fresh-config/opencode/opencode.json"
 cmp "$root/AGENTS.global.md" "$tmp/fresh-config/opencode/AGENTS.md"
+cmp "$root/plugins/adopt-catalog.ts" "$tmp/fresh-config/opencode/plugins/adopt-catalog.ts"
 diff -r "$root/plugins/commander" "$tmp/fresh-config/opencode/plugins/commander"
 diff -r "$root/plugins/deepseek-fallback" "$tmp/fresh-config/opencode/plugins/deepseek-fallback"
 for ignore_file in "$fresh_home/.gitignore_global" "$fresh_home/.gitignore_template"; do
@@ -180,6 +182,7 @@ for container in first second; do
     grep -Fq 'mounted read-only; left unchanged.' "$tmp/$container-output.log"
     cmp "$root/templates/opencode.json" "$container_target/opencode.json"
     cmp "$root/AGENTS.global.md" "$container_target/AGENTS.md"
+    cmp "$root/plugins/adopt-catalog.ts" "$container_target/plugins/adopt-catalog.ts"
     cmp "$root/plugins/cap-context.ts" "$container_target/plugins/cap-context.ts"
     diff -r "$root/plugins/commander" "$container_target/plugins/commander"
     diff -r "$root/plugins/deepseek-fallback" "$container_target/plugins/deepseek-fallback"

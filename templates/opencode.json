@@ -48,6 +48,25 @@
         "apiKey": "sbx-cs-deepseek"
       },
       "env": []
+    },
+    "vti": {
+      "name": "VTI",
+      "package": "@opencode/ai/providers/openai-compatible",
+      "settings": {
+        "baseURL": "https://vps.town/connector/ai/v1",
+        "apiKey": "sbx-cs-vti"
+      },
+      "env": [],
+      "models": {
+        "claude-fable-5-2": {},
+        "claude-opus-5-5": {},
+        "claude-sonnet-5-5": {},
+        "claude-haiku-5-5": {},
+        "claude-opus-4-6": {},
+        "gemini-4-neon": {},
+        "gemini-4-hydrogen": {},
+        "gpt-6-luna": {}
+      }
     }
   }
 }

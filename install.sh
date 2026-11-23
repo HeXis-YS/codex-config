@@ -50,7 +50,7 @@ if "$container"; then
         [ -f "$script_dir/$source" ] || die "missing $source"
     done
     [ -d "$script_dir/models-md" ] || die 'missing models-md'
-    for plugin_file in plugins/cap-context.ts \
+    for plugin_file in plugins/adopt-catalog.ts plugins/cap-context.ts \
         plugins/commander/package.json plugins/commander/prompt.ts \
         plugins/commander/rpc.ts plugins/commander/server.ts plugins/commander/tui.ts \
         plugins/deepseek-fallback/package.json plugins/deepseek-fallback/rpc.ts \
@@ -135,6 +135,7 @@ else
     printf 'Shared skills at %s are mounted read-only; left unchanged.\n' "$skills_target"
 fi
 mkdir -p "$target/plugins"
+install -m 0644 "$script_dir/plugins/adopt-catalog.ts" "$target/plugins/adopt-catalog.ts"
 install -m 0644 "$script_dir/plugins/cap-context.ts" "$target/plugins/cap-context.ts"
 rm -rf -- "$target/plugins/commander"
 mkdir -p "$target/plugins/commander"
