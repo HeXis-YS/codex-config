@@ -141,6 +141,7 @@ test("commander plugin toggles per-session prompt injection while isolating othe
     explore: { model: "mock/claude-fable-5-2" },
   }
   await Bun.file(join(env.XDG_CONFIG_HOME, "opencode", "plugins", "cap-context.ts")).delete()
+  rmSync(join(env.XDG_CONFIG_HOME, "opencode", "plugins", "deepseek-fallback"), { recursive: true, force: true })
   writeFileSync(configPath, JSON.stringify(config, null, 2))
 
   mkdirSync("/tmp/opencode", { recursive: true })

@@ -52,7 +52,9 @@ if "$container"; then
     [ -d "$script_dir/models-md" ] || die 'missing models-md'
     for plugin_file in plugins/cap-context.ts \
         plugins/commander/package.json plugins/commander/prompt.ts \
-        plugins/commander/rpc.ts plugins/commander/server.ts plugins/commander/tui.ts; do
+        plugins/commander/rpc.ts plugins/commander/server.ts plugins/commander/tui.ts \
+        plugins/deepseek-fallback/package.json plugins/deepseek-fallback/rpc.ts \
+        plugins/deepseek-fallback/server.ts plugins/deepseek-fallback/tui.ts; do
         [ -f "$script_dir/$plugin_file" ] || die "missing $plugin_file"
     done
 else
@@ -138,6 +140,11 @@ rm -rf -- "$target/plugins/commander"
 mkdir -p "$target/plugins/commander"
 for commander_file in package.json prompt.ts rpc.ts server.ts tui.ts; do
     install -m 0644 "$script_dir/plugins/commander/$commander_file" "$target/plugins/commander/$commander_file"
+done
+rm -rf -- "$target/plugins/deepseek-fallback"
+mkdir -p "$target/plugins/deepseek-fallback"
+for fallback_file in package.json rpc.ts server.ts tui.ts; do
+    install -m 0644 "$script_dir/plugins/deepseek-fallback/$fallback_file" "$target/plugins/deepseek-fallback/$fallback_file"
 done
 rm -f -- "$target/plugins/inject-model-skills.ts"
 git config --global user.email '40174982+HeXis-YS@users.noreply.github.com'

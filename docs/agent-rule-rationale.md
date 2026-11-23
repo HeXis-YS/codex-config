@@ -344,3 +344,15 @@ E3 执行循环、启动与接续核对、第二次执行前固化流程、必�
 - 服务端 `context` hook 仅在主会话（无 `parentID`）且 `metadata.commander === true` 时向当次模型请求的 `event.system` 注入指挥者提示词；关闭后下一次请求立即停止注入。`subagent` 子会话带有 `parentID`，始终保持 worker 角色，不继承指挥者提示词；标题生成等辅助请求也不注入。
 - `AGENTS.global.md` §5.2 仅保留初始调查边界以及按可逆性、风险与爆炸半径确定计划和验证强度的规则；原「任务分流」并入指挥者提示词的原子任务拆解与并行派发条款，原「子代理模型」分工（代码审查与安全审计使用 `openrouter/z-ai/glm-5.3-flash`，其他工作使用 `openrouter/deepseek/deepseek-v4.1-flash-1017`，用户明确指定时以用户为准）迁入 [`plugins/commander/prompt.ts`](../plugins/commander/prompt.ts)。未开启指挥者模式时若偶发调用 `subagent`，`general` 和 `explore` 仍由 `templates/opencode.json` 中的默认模型兜底，代价是关闭指挥者模式时不再常驻注入审计子代理改传 `glm-5.3-flash` 的提示词约定。
 - 仅做提示词注入，不隐藏或拦截执行工具，并明确保留全局及模型专用约束中的权限、安全审批与硬性停止边界。`claude-fable-5-2.md` 保留持续推进、普通障碍排解、共享状态核对、范围收敛与独立成文报告等模型校准，相关措辞改为同时兼容直接执行与子代理委派。
+
+## DeepSeek 免费额度原位回退（2026-11-23）
+
+对应制品：[`plugins/deepseek-fallback/`](../plugins/deepseek-fallback/)、[`templates/opencode.json`](../templates/opencode.json)、[`plugins/commander/prompt.ts`](../plugins/commander/prompt.ts) 与 [`install.sh`](../install.sh)。
+
+**依据**：OpenCode Console 提供免费的 `opencode/deepseek-v4.1-flash-free`，适合优先承担通用子代理（及手动选用该模型的会话）请求，仅在免费额度用尽或触发免费层限流时再回退到付费的 `openrouter/deepseek/deepseek-v4.1-flash-1017`。评估第三方包 `opencode-runtime-fallback@0.3.1` 时发现两项不适配：一是它仅支持按 `agent` 或全局绑定回退链，不支持按当前请求模型过滤，可能将借用 `general` 运行的 `glm-5.3-flash` 审计或主会话其他模型误切到 DeepSeek；二是它通过终止当前执行步再二次发送续写消息实现切换，在 OpenCode `v2.3.2`（`subagent` 始终后台运行）中会导致核心先向父会话推送 `<subagent state="error">` 并额外唤醒父会话一轮。
+
+**决策与取舍**：将 `templates/opencode.json` 中 `general`、`explore` 的默认模型及 `plugins/commander/prompt.ts` 中的通用子代理模型改为 `opencode/deepseek-v4.1-flash-free`（覆盖上文早先固定使用 OpenRouter 付费渠道的默认设置），并新增零外部依赖的本地 V2 插件 `plugins/deepseek-fallback/`：
+
+- 通过 `ctx.session.hook("retry", ...)` 仅在非辅助代理（排除 `title`、`compaction`、`summary`）请求的模型精确为 `opencode/deepseek-v4.1-flash-free`，且错误属于额度不足或限流（`QuotaExceeded`、`RateLimit`、HTTP `402`/`429` 或相关错误代码与文本，排除上下文长度超限）时触发；校验目标模型在当前项目启用可用后调用 `ctx.session.switchModel` 切至 `openrouter/deepseek/deepseek-v4.1-flash-1017` 并立即触发当步零延迟重试。
+- 切换发生在单步内部重试阶段，不触发 `session.execution.failed`，不注入合成续写提示词，后台 `subagent` 仅在完成后向父会话返回唯一一条 `<subagent state="completed">`；其他模型（含 `glm-5.3-flash`、Claude、GPT、Gemini）与普通 5xx 错误保持原有行为。插件直接以会话自身的 `session.model` 判断是否已完成切换：若未来宿主版本未在同一步内重读新模型则立即终止重试避免死循环，后续手动切回免费模型后仍可正常再次触发回退；备用模型不可用时保持原样报错（fail-close）。
+- 服务端切换后优先从上游原始响应体提取错误描述与重置字段（避免被宿主对 `FreeUsageLimitError` 等错误生成的通用引导文案覆盖），通过插件 RPC 事件推送给 TUI；TUI 端监听同项目事件刷新会话缓存并弹出 `warning` Toast，便于直接观察免费额度重置时间提示。由于免费额度通常按天重置且真实重置字段格式尚未实测采集，当前不做短周期自动切回，待观察真实错误报文后再按需决定恢复策略。
