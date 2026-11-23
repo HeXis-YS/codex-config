@@ -27,7 +27,7 @@
 - [模型专用约束](models-md/)：按 models-md 的文件名约定组织，安装器原样复制到配置目录；不作为技能注册。
 - [cap-context 插件](plugins/cap-context.ts)：限制部分模型的上下文与输入上限。
 - [commander 插件](plugins/commander/)：按会话手动开启或关闭指挥者模式；所有模型的新会话默认关闭，在 TUI 中通过 `/commander`（支持 `on`、`off`、`status`）或命令面板「切换指挥者模式」控制。开启后仅向当前主会话的模型请求注入指挥者提示词，不隐藏或拦截工具，也不向 `subagent` 子会话注入。
-- [deepseek-fallback 插件](plugins/deepseek-fallback/)：当会话请求 `opencode/deepseek-v4.1-flash-free` 返回免费额度不足或限流（如 `QuotaExceeded`、`RateLimit`、HTTP `402`/`429`）时，在当前请求的重试阶段原位切换到 `openrouter/deepseek/deepseek-v4.1-flash-1017`，并在 TUI 弹出携带上游原始错误信息与重置字段的 Toast；不影响其他模型、辅助摘要请求或普通 5xx 重试。
+- [deepseek-fallback 插件](plugins/deepseek-fallback/)：当会话请求 `opencode/deepseek-v4.1-flash-free` 返回免费额度不足或限流（如 `provider.free-limit`、`QuotaExceeded`、`RateLimit`、HTTP `402`/`429`）时，在当前请求的重试阶段原位切换到 `openrouter/deepseek/deepseek-v4.1-flash-1017`，并在 TUI 弹出携带上游错误信息与重置时间提示的 Toast；不影响其他模型、辅助摘要请求或普通 5xx 重试。
 - [models-md 插件](https://github.com/acramsay/opencode-models-md)：每次模型请求前注入匹配的约束正文：`gpt-6` 注入 [`gpt-6.md`](models-md/gpt-6.md)，`claude-fable-5-2` 注入 [`claude-fable-5-2.md`](models-md/claude-fable-5-2.md)，`claude-opus-5-5` 注入 [`claude-opus-5-5.md`](models-md/claude-opus-5-5.md)（均包含 `-*` 连字符后缀变体及跨 provider 路由）。文件名按连字符边界匹配，`gpt-6.1-sol` 这类点号版本不会匹配 `gpt-6.md`。安装器把 `models-md/` 复制到配置目录；修改后重新安装。这些约束不能通过技能工具显式调用。
 - [备份脚本](backup.sh)：备份和恢复 OpenCode 用户数据与状态，用于容器间迁移。
 

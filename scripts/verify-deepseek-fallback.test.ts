@@ -24,6 +24,7 @@ const env = {
       "no_proxy",
       "NODE_EXTRA_CA_CERTS",
       "SSL_CERT_FILE",
+      "TZ",
     ].flatMap((key) => (process.env[key] ? [[key, process.env[key]!]] : [])),
   ),
   PATH: `${dirname(process.execPath)}:${process.env.PATH ?? "/usr/bin:/bin"}`,
@@ -144,6 +145,12 @@ test("classifier distinguishes quota/rate-limit errors and extracts reset metada
 
   expect(
     isQuotaOrRateLimitError({
+      type: "provider.free-limit",
+      message: "Unrecognized message",
+    }),
+  ).toBe(true)
+  expect(
+    isQuotaOrRateLimitError({
       type: "QuotaExceeded",
       message: "Daily free usage limit reached",
       status: 429,
@@ -170,6 +177,48 @@ test("classifier distinguishes quota/rate-limit errors and extracts reset metada
       status: 502,
     }),
   ).toBe(false)
+
+  const liveNow = Date.parse("2026-11-23T09:45:10.656Z")
+  const livePayload = {
+    type: "provider.free-limit",
+    message:
+      "Free usage limit reached. Connect a provider or subscribe to OpenCode Go to keep going, or switch models.",
+    status: 429,
+    response: {
+      body: JSON.stringify({
+        type: "error",
+        error: {
+          type: "FreeUsageLimitError",
+          message:
+            "Free usage limit reached. Free models work in OpenCode (https://opencode.ai); subscribe to OpenCode Go to keep going: https://opencode.ai/go",
+        },
+      }),
+    },
+    retryAfterMs: 53_628_000,
+  }
+  expect(formatQuotaReason(livePayload, { now: liveNow, tz: "CST-8" })).toBe(
+    "Free usage limit reached. | 预计 14小时54分 后重置（明日 08:38）",
+  )
+  expect(formatQuotaReason(livePayload, { now: liveNow, tz: "Asia/Shanghai" })).toBe(
+    "Free usage limit reached. | 预计 14小时54分 后重置（明日 08:38）",
+  )
+  expect(formatQuotaReason(livePayload, { now: liveNow, tz: "UTC" })).toBe(
+    "Free usage limit reached. | 预计 14小时54分 后重置（明日 00:38 UTC）",
+  )
+
+  expect(
+    formatQuotaReason(
+      { type: "RateLimit", message: "Rate limit exceeded", status: 429, retryAfterMs: 7_500_000 },
+      { now: Date.parse("2026-11-23T02:00:00Z"), tz: "CST-8" },
+    ),
+  ).toBe("Rate limit exceeded | 预计 2小时5分 后重置（12:05）")
+
+  expect(
+    formatQuotaReason(
+      { type: "RateLimit", message: "Too many requests", status: 429, retryAfterMs: 15_000 },
+      { now: liveNow, tz: "CST-8" },
+    ),
+  ).toBe("Too many requests | 预计 15秒 后可重试")
 
   const reason = formatQuotaReason({
     type: "QuotaExceeded",
@@ -292,13 +341,17 @@ test("deepseek-fallback switches free DeepSeek in-place without parent error not
 
         return new Response(
           JSON.stringify({
+            type: "error",
             error: {
-              code: "FreeUsageLimitError",
-              message: "Daily free quota exceeded for deepseek-v4.1-flash-free",
-              resetAt: "2026-11-24T00:00:00Z",
+              type: "FreeUsageLimitError",
+              message:
+                "Free usage limit reached. Free models work in OpenCode (https://opencode.ai); subscribe to OpenCode Go to keep going: https://opencode.ai/go",
             },
           }),
-          { status: 429, headers: { "content-type": "application/json" } },
+          {
+            status: 429,
+            headers: { "content-type": "application/json", "retry-after": "53628" },
+          },
         )
       }
 
@@ -551,8 +604,10 @@ test("deepseek-fallback switches free DeepSeek in-place without parent error not
     expect(toasts[0]?.message).toContain(
       "opencode/deepseek-v4.1-flash-free → openrouter/deepseek/deepseek-v4.1-flash-1017",
     )
-    expect(toasts[0]?.message).toContain("Daily free quota exceeded for deepseek-v4.1-flash-free")
-    expect(toasts[0]?.message).toContain("resetAt: 2026-11-24T00:00:00Z")
+    expect(toasts[0]?.message).toContain("Free usage limit reached.")
+    expect(toasts[0]?.message).toContain("预计 14小时54分 后重置（")
+    expect(toasts[0]?.message).not.toContain("subscribe to OpenCode Go")
+    expect(toasts[0]?.message).not.toContain("retryAfterMs")
     expect(invalidatedSessions.length).toBe(1)
 
     const childSessionID = invalidatedSessions[0]!
