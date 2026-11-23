@@ -1,6 +1,6 @@
 # 全局规则的设计依据
 
-本文记录全局规则及从中拆出的补充模块的设计依据、适用边界和取舍，供维护者评估后续改写。通用执行契约以 [`AGENTS.global.md`](../AGENTS.global.md) 为准，技能与模型专用约束的执行契约分别以对应 `SKILL.md` 和 `models-md/<model>.md` 为准；本文由仓库维护时按需查阅，不随安装器分发。
+本文记录全局规则及从中拆出的补充模块的设计依据、适用边界和取舍，供维护者评估后续改写。通用执行契约以 [`AGENTS.global.md`](../AGENTS.global.md) 为准，技能、模型专用约束及会话插件提示词的执行契约分别以对应 `SKILL.md`、`models-md/<model>.md` 和插件源码为准；本文由仓库维护时按需查阅，不随安装器分发。
 
 修订规则时，同时核对它要防止的失败、触发条件和执行结果。评价包括正常执行的成本、漏触发造成的损失、误触发造成的打断。措辞可以改进，行为边界的变化需要明确记录。
 
@@ -333,13 +333,14 @@ E3 执行循环、启动与接续核对、第二次执行前固化流程、必�
 
 ## 指挥者模式按会话切换（2026-11-23）
 
-对应制品：[`plugins/commander/`](../plugins/commander/)、[`models-md/claude-fable-5-2.md`](../models-md/claude-fable-5-2.md) 与 [`install.sh`](../install.sh)。
+对应制品：[`AGENTS.global.md`](../AGENTS.global.md)、[`plugins/commander/`](../plugins/commander/)、[`models-md/claude-fable-5-2.md`](../models-md/claude-fable-5-2.md) 与 [`install.sh`](../install.sh)。
 
-**依据**：此前「指挥者模式」直接写在 `models-md/claude-fable-5-2.md` 中，只要会话选用 `claude-fable-5-2` 就会无条件强制走 `subagent` 委派，既无法在轻量任务中关闭，也无法在其他模型会话中按需启用。强制委派属于会话级工作方式选择，而非某个模型固有的缺陷校准。
+**依据**：此前「指挥者模式」直接写在 `models-md/claude-fable-5-2.md` 中，只要会话选用 `claude-fable-5-2` 就会无条件强制走 `subagent` 委派，既无法在轻量任务中关闭，也无法在其他模型会话中按需启用；同时 `AGENTS.global.md` §5.2 仍常驻携带「任务分流」和「子代理模型」规则，使未启用指挥者模式的普通会话与承担具体执行的 `subagent` worker 子会话也持续承担委派指令成本，并可能诱导子会话继续套娃分流。强制委派与子代理调度属于会话级工作方式选择，而非所有请求的常驻前提或单一模型的缺陷校准。
 
-**决策与取舍**：将指挥者模式规则从 `models-md/claude-fable-5-2.md` 拆出，改由零外部依赖的本地 V2 插件 `plugins/commander/` 按会话管理：
+**决策与取舍**：将指挥者模式规则从 `models-md/claude-fable-5-2.md` 拆出，同时把 `AGENTS.global.md` §5.2 中的子代理相关条款移出全局规则，统一收归零外部依赖的本地 V2 插件 `plugins/commander/` 按会话管理：
 
 - 所有模型（含 `claude-fable-5-2`）的新会话默认关闭指挥者模式；状态持久化在根会话的 `session.metadata.commander` 中，跨会话互不影响，压缩上下文后仍保持原状态。
 - TUI 入口通过 `keymap.layer` 注册命令面板项「切换指挥者模式」（`commander.toggle`）与 `/commander [on|off|status]` 斜杠命令，借助插件 RPC 读写根会话状态并用 Toast 反馈，避免把开关状态写入对话历史。未进入会话时执行开启命令会新建会话并立即启用。
 - 服务端 `context` hook 仅在主会话（无 `parentID`）且 `metadata.commander === true` 时向当次模型请求的 `event.system` 注入指挥者提示词；关闭后下一次请求立即停止注入。`subagent` 子会话带有 `parentID`，始终保持 worker 角色，不继承指挥者提示词；标题生成等辅助请求也不注入。
+- `AGENTS.global.md` §5.2 仅保留初始调查边界以及按可逆性、风险与爆炸半径确定计划和验证强度的规则；原「任务分流」并入指挥者提示词的原子任务拆解与并行派发条款，原「子代理模型」分工（代码审查与安全审计使用 `openrouter/z-ai/glm-5.3-flash`，其他工作使用 `openrouter/deepseek/deepseek-v4.1-flash-1017`，用户明确指定时以用户为准）迁入 [`plugins/commander/prompt.ts`](../plugins/commander/prompt.ts)。未开启指挥者模式时若偶发调用 `subagent`，`general` 和 `explore` 仍由 `templates/opencode.json` 中的默认模型兜底，代价是关闭指挥者模式时不再常驻注入审计子代理改传 `glm-5.3-flash` 的提示词约定。
 - 仅做提示词注入，不隐藏或拦截执行工具，并明确保留全局及模型专用约束中的权限、安全审批与硬性停止边界。`claude-fable-5-2.md` 保留持续推进、普通障碍排解、共享状态核对、范围收敛与独立成文报告等模型校准，相关措辞改为同时兼容直接执行与子代理委派。

@@ -249,11 +249,12 @@ test("commander plugin toggles per-session prompt injection while isolating othe
       model: { providerID: "mock", id: "claude-fable-5-2" },
     })
 
-    // 1. Default OFF on all new sessions (including claude-fable-5-2).
+    // 1. Default OFF on all new sessions (including claude-fable-5-2): neither commander prompt nor subagent model rules are injected.
     const initialA = await rpc<CommanderStatus>("status", { sessionID: sessionA.id })
     expect(initialA).toEqual({ sessionID: sessionA.id, enabled: false })
     const turn1 = await runTurn(sessionA.id, "Turn 1 default off")
     expect(turn1.primarySystem).not.toContain("## 指挥者模式")
+    expect(turn1.primarySystem).not.toContain("glm-5.3-flash")
 
     // 2. Manual ON via toggle on sessionA: injects exact COMMANDER_PROMPT into primary loop, not title.
     const toggledOn = await rpc<CommanderStatus>("toggle", { sessionID: sessionA.id })
@@ -290,6 +291,7 @@ test("commander plugin toggles per-session prompt injection while isolating othe
     expect(childStatus).toEqual({ sessionID: sessionA.id, enabled: true })
     const turnChild = await runTurn(childA.id, "Subagent worker task")
     expect(turnChild.primarySystem).not.toContain("## 指挥者模式")
+    expect(turnChild.primarySystem).not.toContain("glm-5.3-flash")
 
     // 5. Manual OFF mid-session on sessionA: next turn immediately drops commander prompt.
     const toggledOff = await rpc<CommanderStatus>("toggle", { sessionID: sessionA.id })
