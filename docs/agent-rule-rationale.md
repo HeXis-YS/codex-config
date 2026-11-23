@@ -365,6 +365,6 @@ E3 执行循环、启动与接续核对、第二次执行前固化流程、必�
 
 **决策与取舍**：在 `templates/opencode.json` 中新增单一 `vti` provider，模型列表仅以空对象 `{}` 显式声明所需模型，并新增零外部依赖的本地 V2 插件 `plugins/adopt-catalog.ts`：
 
-- 在 `ctx.model.transform` 中按 `model.id` / `model.modelID` 查找内置 `anthropic`、`google`、`openai` 源目录，直接继承匹配模型的完整定义（显示名、`family`、原生 `package`、多模态与工具能力、`variants`、`limit`、`cost`），并在命中 `google` 目录时自动将基础地址后缀切换为 `/v1beta`；未命中这三套目录的模型保留 `vti` 顶层的 `@opencode/ai/providers/openai-compatible` 运行时。
+- 在 `ctx.model.transform` 中按 `model.id` / `model.modelID` 查找内置 `anthropic`、`google`、`openai` 源目录，直接继承匹配模型的完整定义（显示名、`family`、原生 `package`、多模态与工具能力、`variants`、`limit`、`cost`），并在命中 `google` 目录时自动将基础地址后缀切换为 `/v1beta`；同时剔除 `capabilities.freeform`，避免 OpenCode 将 `patch` 与 `execute` 编码为 VTI `/v1/responses` 网关不支持的 `type="custom"` 工具（剔除后自动退化为标准 JSON Schema `type="function"` 工具）；未命中这三套目录的模型保留 `vti` 顶层的 `@opencode/ai/providers/openai-compatible` 运行时。
 - 插件文件命名为 `adopt-catalog.ts`，保持字典序早于 `cap-context.ts`，使执行顺序固定为：`adopt-catalog` 继承目录基础定义 → `cap-context` 收口 GPT 上下文及补齐缺失 `limit.input` → 内置 `opencode.config.provider` 叠加用户在 `opencode.json` 中声明的模型级覆盖（如 `modelID` 别名、`disabled`、`headers`）。
 - 作用域限定于 `vti`，不自动改写其他自定义 provider 的 `package` 与 `baseURL`，避免误将仅实现 `/v1/chat/completions` 的单协议网关切到 `/v1/messages` 或 `/v1beta`。

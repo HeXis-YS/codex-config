@@ -146,6 +146,13 @@ test("adopt-catalog inherits native catalog definitions for vti while preserving
       }
 
       if (url.pathname.endsWith("/v1/responses")) {
+        const reqTools = Array.isArray(body.tools) ? (body.tools as Record<string, unknown>[]) : []
+        if (reqTools.some((tool) => tool.type !== "function")) {
+          return Response.json(
+            { error: { code: 400, message: "此接口仅支持 function 工具", type: "invalid_request_error" } },
+            { status: 400 },
+          )
+        }
         const itemId = "msg_resp_1"
         const respId = "resp_stub_1"
         const created = {
@@ -405,9 +412,12 @@ test("adopt-catalog inherits native catalog definitions for vti while preserving
 
     const vtiLuna = findModel("vti", "gpt-6-luna")!
     const openaiLuna = findModel("openai", "gpt-6-luna")!
+    const { freeform: _openaiFreeform, ...expectedLunaCapabilities } = openaiLuna.capabilities
+    expect(_openaiFreeform).toBeDefined()
     expect(vtiLuna.name).toBe(openaiLuna.name)
     expect(vtiLuna.package).toBe("@opencode/ai/providers/openai/responses")
-    expect(vtiLuna.capabilities).toEqual(openaiLuna.capabilities)
+    expect(vtiLuna.capabilities).toEqual(expectedLunaCapabilities)
+    expect(vtiLuna.capabilities.freeform).toBeUndefined()
     expect(vtiLuna.limit).toEqual({ context: 272000, input: 922000, output: 128000 })
     expect(vtiLuna.variants).toEqual(openaiLuna.variants)
 
@@ -454,6 +464,10 @@ test("adopt-catalog inherits native catalog definitions for vti while preserving
     expect(respHit).toBeDefined()
     expect(respHit?.headers.authorization).toBe("Bearer sbx-cs-vti")
     expect(respHit?.body.model).toBe("gpt-6-luna")
+    const respTools = (respHit?.body.tools ?? []) as { type: string; name: string }[]
+    expect(respTools.length).toBeGreaterThan(0)
+    expect(respTools.every((tool) => tool.type === "function")).toBe(true)
+    expect(respTools.some((tool) => tool.name === "execute")).toBe(true)
 
     const fallbackHits = await promptWithModel("vti", "custom-qwen")
     const chatHit = fallbackHits.find((h) => h.path === "/connector/ai/v1/chat/completions")

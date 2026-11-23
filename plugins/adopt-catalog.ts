@@ -29,8 +29,13 @@ export default Plugin.define({
 
         const isGoogle = matched.provider.id === "google"
         const { apiKey: _apiKey, baseURL: _baseURL, ...catalogSettings } = catalog.settings ?? {}
+        const inherited = structuredClone(catalog)
+        // VTI 的 /v1/responses 网关仅接受 type="function" 工具；剔除 freeform 后，
+        // OpenCode 自动将 patch 与 execute 编码为标准 JSON Schema function 工具。
+        delete inherited.capabilities.freeform
+
         editor.update(PROVIDER_ID, model.id, (draft) => {
-          Object.assign(draft, structuredClone(catalog), {
+          Object.assign(draft, inherited, {
             id: model.id,
             modelID: model.modelID || model.id,
             providerID: PROVIDER_ID,
