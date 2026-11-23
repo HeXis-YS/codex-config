@@ -66,6 +66,8 @@ mkdir -p "$home/.config/opencode/model-skills/avoid-overengineering" \
 printf 'old copy\n' > "$home/.config/opencode/model-skills/avoid-overengineering/SKILL.md"
 printf 'old reference\n' > "$home/.config/opencode/models-md/references/verification.md"
 printf 'old name\n' > "$home/.config/opencode/models-md/gpt.md"
+mkdir -p "$home/.config/opencode/plugins/commander"
+printf 'obsolete\n' > "$home/.config/opencode/plugins/commander/obsolete.ts"
 printf '{"personal":true}\n' > "$home/.config/opencode/opencode.json"
 custom_ignore="$tmp/custom-ignore"
 HOME="$home" XDG_CONFIG_HOME="$home/.config" git config --global core.excludesFile "$custom_ignore"
@@ -94,6 +96,7 @@ done
 [ ! -e "$target/models-md/gpt.md" ]
 grep -q '^#### 新增测试的依据$' "$target/models-md/gpt-6.md"
 cmp "$root/plugins/cap-context.ts" "$target/plugins/cap-context.ts"
+diff -r "$root/plugins/commander" "$target/plugins/commander"
 cmp "$root/templates/opencode.json" "$target/opencode.json"
 [ "$(stat -c %a "$target/opencode.json")" = 600 ]
 grep -qx keep "$home/.codex/config.toml"
@@ -123,6 +126,7 @@ mkdir -p "$tmp/fresh-config" "$fresh_home"
 run_install "$fresh_home" "$tmp/fresh-config" legacy
 cmp "$root/templates/opencode.json" "$tmp/fresh-config/opencode/opencode.json"
 cmp "$root/AGENTS.global.md" "$tmp/fresh-config/opencode/AGENTS.md"
+diff -r "$root/plugins/commander" "$tmp/fresh-config/opencode/plugins/commander"
 for ignore_file in "$fresh_home/.gitignore_global" "$fresh_home/.gitignore_template"; do
     grep -Fqx '.opencode' "$ignore_file"
     grep -Fqx '.codex' "$ignore_file"
@@ -174,6 +178,7 @@ for container in first second; do
     cmp "$root/templates/opencode.json" "$container_target/opencode.json"
     cmp "$root/AGENTS.global.md" "$container_target/AGENTS.md"
     cmp "$root/plugins/cap-context.ts" "$container_target/plugins/cap-context.ts"
+    diff -r "$root/plugins/commander" "$container_target/plugins/commander"
     # Model instructions are installed locally even when shared skills are read-only.
     for model in gpt-6 claude-fable-5-2 claude-opus-5-5; do
         cmp "$root/models-md/$model.md" "$container_target/models-md/$model.md"

@@ -2,7 +2,7 @@
 // Requires OpenCode V2 and registry access. Uses isolated HOME/XDG directories
 // and a local provider stub; never calls a real model or changes live config.
 import { expect, test } from "bun:test"
-import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs"
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs"
 import { dirname, join, resolve } from "node:path"
 
 const root = resolve(import.meta.dir, "..")
@@ -122,6 +122,7 @@ test("published models-md injects only the matching installed skill into real re
   // Runtime checks only the published package, not unrelated local plugins.
   const localPlugin = join(env.XDG_CONFIG_HOME, "opencode", "plugins", "cap-context.ts")
   await Bun.file(localPlugin).delete()
+  rmSync(join(env.XDG_CONFIG_HOME, "opencode", "plugins", "commander"), { recursive: true, force: true })
   writeFileSync(configPath, JSON.stringify(config))
   const project = join(run, "project")
   mkdirSync(project)
@@ -151,6 +152,7 @@ test("published models-md injects only the matching installed skill into real re
       for (const skill of skills) {
         expect(system.includes(headings[skill]), `${model}: ${skill}`).toBe(skill === expected)
       }
+      expect(system).not.toContain("## 指挥者模式")
       if (expected) {
         const source = await Bun.file(join(root, "models-md", `${files[expected]}.md`)).text()
         expect(system).toContain(JSON.stringify(source.trim()).slice(1, -1))

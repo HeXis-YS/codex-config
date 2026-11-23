@@ -1,0 +1,10 @@
+{
+  "name": "commander",
+  "version": "1.0.0",
+  "type": "module",
+  "exports": {
+    ".": "./server.ts",
+    "./tui": "./tui.ts",
+    "./rpc": "./rpc.ts"
+  }
+}

@@ -330,3 +330,16 @@ E3 执行循环、启动与接续核对、第二次执行前固化流程、必�
 用户指定子代理的默认模型分工：代码审查和安全审计使用 `openrouter/z-ai/glm-5.3-flash`，其他委派工作使用 `openrouter/deepseek/deepseek-v4.1-flash-1017`。这样审查和安全审计使用更适合缺陷与安全判断的模型，其他委派工作使用通用模型，避免所有子任务共用同一模型。适用边界是 `subagent` 委派；用户明确指定模型时以用户为准。模型不可用或调用失败时按 §7.2 报告，不静默改用其他模型。
 
 同一分工随后固化到配置层：`templates/opencode.json` 为内置子代理 `general` 和 `explore` 写入默认模型，不再只依赖父代理每次委派时传模型。原因是子代理未配置 `model` 时继承父会话模型，一次未指定的委派就会按父会话的昂贵模型计费。选择 `deepseek-v4.1-flash-1017` 是因为它覆盖通用委派且单价最低；配置层只提供平台默认值，代码审查和安全审计仍需委派方显式传 `glm-5.3-flash`，这与 §5.2 的分工一致。该配置不影响主会话模型，也不覆盖自定义子代理的定义。
+
+## 指挥者模式按会话切换（2026-11-23）
+
+对应制品：[`plugins/commander/`](../plugins/commander/)、[`models-md/claude-fable-5-2.md`](../models-md/claude-fable-5-2.md) 与 [`install.sh`](../install.sh)。
+
+**依据**：此前「指挥者模式」直接写在 `models-md/claude-fable-5-2.md` 中，只要会话选用 `claude-fable-5-2` 就会无条件强制走 `subagent` 委派，既无法在轻量任务中关闭，也无法在其他模型会话中按需启用。强制委派属于会话级工作方式选择，而非某个模型固有的缺陷校准。
+
+**决策与取舍**：将指挥者模式规则从 `models-md/claude-fable-5-2.md` 拆出，改由零外部依赖的本地 V2 插件 `plugins/commander/` 按会话管理：
+
+- 所有模型（含 `claude-fable-5-2`）的新会话默认关闭指挥者模式；状态持久化在根会话的 `session.metadata.commander` 中，跨会话互不影响，压缩上下文后仍保持原状态。
+- TUI 入口通过 `keymap.layer` 注册命令面板项「切换指挥者模式」（`commander.toggle`）与 `/commander [on|off|status]` 斜杠命令，借助插件 RPC 读写根会话状态并用 Toast 反馈，避免把开关状态写入对话历史。未进入会话时执行开启命令会新建会话并立即启用。
+- 服务端 `context` hook 仅在主会话（无 `parentID`）且 `metadata.commander === true` 时向当次模型请求的 `event.system` 注入指挥者提示词；关闭后下一次请求立即停止注入。`subagent` 子会话带有 `parentID`，始终保持 worker 角色，不继承指挥者提示词；标题生成等辅助请求也不注入。
+- 仅做提示词注入，不隐藏或拦截执行工具，并明确保留全局及模型专用约束中的权限、安全审批与硬性停止边界。`claude-fable-5-2.md` 保留持续推进、普通障碍排解、共享状态核对、范围收敛与独立成文报告等模型校准，相关措辞改为同时兼容直接执行与子代理委派。
