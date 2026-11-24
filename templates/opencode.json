@@ -6,19 +6,19 @@
   },
   "agents": {
     "title": {
-      "model": "openai/gpt-6-luna"
+      "model": "vti/gpt-6-luna"
     },
     "compaction": {
-      "model": "openai/gpt-6-luna"
+      "model": "vti/gpt-6-luna#max"
     },
     "summary": {
-      "model": "openai/gpt-6-luna"
+      "model": "vti/gpt-6-luna#max"
     },
     "general": {
-      "model": "opencode/deepseek-v4.1-flash-free"
+      "model": "vti/gpt-6-luna#max"
     },
     "explore": {
-      "model": "opencode/deepseek-v4.1-flash-free"
+      "model": "vti/gpt-6-luna#max"
     }
   },
   "providers": {

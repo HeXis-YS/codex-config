@@ -368,3 +368,11 @@ E3 执行循环、启动与接续核对、第二次执行前固化流程、必�
 - 在 `ctx.model.transform` 中按 `model.id` / `model.modelID` 查找内置 `anthropic`、`google`、`openai` 源目录，直接继承匹配模型的完整定义（显示名、`family`、原生 `package`、多模态与工具能力、`variants`、`limit`、`cost`），并在命中 `google` 目录时自动将基础地址后缀切换为 `/v1beta`；同时剔除 `capabilities.freeform`，避免 OpenCode 将 `patch` 与 `execute` 编码为 VTI `/v1/responses` 网关不支持的 `type="custom"` 工具（剔除后自动退化为标准 JSON Schema `type="function"` 工具）；未命中这三套目录的模型保留 `vti` 顶层的 `@opencode/ai/providers/openai-compatible` 运行时。
 - 插件文件命名为 `adopt-catalog.ts`，保持字典序早于 `cap-context.ts`，使执行顺序固定为：`adopt-catalog` 继承目录基础定义 → `cap-context` 收口 GPT 上下文及补齐缺失 `limit.input` → 内置 `opencode.config.provider` 叠加用户在 `opencode.json` 中声明的模型级覆盖（如 `modelID` 别名、`disabled`、`headers`）。
 - 作用域限定于 `vti`，不自动改写其他自定义 provider 的 `package` 与 `baseURL`，避免误将仅实现 `/v1/chat/completions` 的单协议网关切到 `/v1/messages` 或 `/v1beta`。
+
+## Agent 默认模型迁至 VTI GPT-6 Luna（2026-11-24）
+
+对应制品：[`templates/opencode.json`](../templates/opencode.json) 与 [`plugins/commander/prompt.ts`](../plugins/commander/prompt.ts)。
+
+**依据**：按用户实际账单单价，`vti/gpt-6-luna`（输入 `$0.01664`、输出 `$0.06239`、缓存写 `$0.02080`、缓存读 `$0.001664` / M tokens）显著低于 `openrouter/deepseek/deepseek-v4.1-flash-1017`（输入 `$0.0784`、输出 `$0.2352`、缓存读 `$0.002352` / M tokens），且 `title`、`compaction`、`summary` 原已使用 `gpt-6-luna`，切至 `vti` 渠道可直接降本。
+
+**决策与取舍**：将 `templates/opencode.json` 中的 `title` 设为 `vti/gpt-6-luna`，`compaction`、`summary`、`general`、`explore` 以及 [`plugins/commander/prompt.ts`](../plugins/commander/prompt.ts) 中的通用子代理模型设为 `vti/gpt-6-luna#max`，通过 `#max` 思考档位弥补部分推理差距，并保持 `providers.vti.models["gpt-6-luna"]` 为 `{}` 以避免把高推理配置强加给 `title`。指挥者模式的代码审查与安全审计子代理继续保留 `openrouter/z-ai/glm-5.3-flash`，维持异构模型交叉审查；[`plugins/deepseek-fallback/`](../plugins/deepseek-fallback/) 保留安装，继续为手动选用 `opencode/deepseek-v4.1-flash-free` 的会话提供额度/限流原位回退。
