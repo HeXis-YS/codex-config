@@ -255,6 +255,14 @@ test("adopt-catalog inherits native catalog definitions for vti while preserving
   for (const entry of Object.values(config.providers.vti.models)) {
     expect(entry).toEqual({})
   }
+  expect(config.providers["vti-chat"]?.canonical).toBe("openai")
+  expect(config.providers["vti-chat"]?.package).toBe("@opencode/ai/providers/openai/chat")
+  expect(Object.keys(config.providers["vti-chat"]?.models ?? {})).toEqual(["gpt-6-luna"])
+  expect(config.agents.title?.model).toBe("vti-chat/gpt-6-luna#max")
+  expect(config.agents.compaction?.model).toBe("vti-chat/gpt-6-luna#max")
+  expect(config.agents.summary?.model).toBe("vti-chat/gpt-6-luna#max")
+  expect(config.agents.general?.model).toBe("vti/gpt-6-luna#max")
+  expect(config.agents.explore?.model).toBe("vti/gpt-6-luna#max")
 
   delete config.plugins
   rmSync(join(env.XDG_CONFIG_HOME, "opencode", "plugins", "commander"), { recursive: true, force: true })
@@ -275,6 +283,13 @@ test("adopt-catalog inherits native catalog definitions for vti while preserving
         "gemini-4-carbon": { modelID: "vti-carbon-alias", headers: { "X-Custom": "yes" } },
         "claude-opus-4-6": { disabled: true },
         "custom-qwen": {},
+      },
+    },
+    "vti-chat": {
+      ...config.providers["vti-chat"],
+      settings: {
+        baseURL: `http://127.0.0.1:${providerServer.port}/connector/ai/v1`,
+        apiKey: "sbx-cs-vti",
       },
     },
     mock: {
@@ -433,11 +448,22 @@ test("adopt-catalog inherits native catalog definitions for vti while preserving
     expect(findModel("mock", "gpt-6-luna")?.package).toBe("@opencode/ai/providers/openai-compatible")
     expect(findModel("mock", "gpt-6-luna")?.name).toBe("Mock Luna")
 
-    // 4. End-to-end outbound protocol dispatch across Anthropic, Gemini (with modelID override), OpenAI Responses, fallback, and mock.
-    const promptWithModel = async (providerID: string, model: string) => {
+    const vtiChatModels = models.filter((item) => item.providerID === "vti-chat")
+    expect(vtiChatModels.map((item) => item.id)).toEqual(["gpt-6-luna"])
+    const vtiChatLuna = findModel("vti-chat", "gpt-6-luna")!
+    expect(vtiChatLuna).toBeDefined()
+    expect(vtiChatLuna.name).toBe(openaiLuna.name)
+    expect(vtiChatLuna.package).toBe("@opencode/ai/providers/openai/chat")
+    expect(vtiChatLuna.limit).toEqual({ context: 1050000, input: 922000, output: 128000 })
+    expect(vtiChatLuna.capabilities.input).toEqual(["text", "image"])
+    expect(vtiChatLuna.capabilities.freeform).toEqual([])
+    expect(vtiChatLuna.variants.map((v) => v.id)).toEqual(openaiLuna.variants.map((v) => v.id))
+
+    // 4. End-to-end outbound protocol dispatch across Anthropic, Gemini (with modelID override), OpenAI Responses, Chat Completions, fallback, and mock.
+    const promptWithModel = async (providerID: string, model: string, variant?: string) => {
       const created = await api<{ data: { id: string } }>("POST", "/api/session", {
         location: { directory: project },
-        model: { providerID, id: model },
+        model: variant ? { providerID, id: model, variant } : { providerID, id: model },
         permissions: [{ action: "*", resource: "*", effect: "allow" }],
       })
       const sessionID = created.data.id
@@ -468,6 +494,16 @@ test("adopt-catalog inherits native catalog definitions for vti while preserving
     expect(respTools.length).toBeGreaterThan(0)
     expect(respTools.every((tool) => tool.type === "function")).toBe(true)
     expect(respTools.some((tool) => tool.name === "execute")).toBe(true)
+
+    const vtiChatHits = await promptWithModel("vti-chat", "gpt-6-luna", "max")
+    const vtiChatHit = vtiChatHits.find((h) => h.path === "/connector/ai/v1/chat/completions")
+    expect(vtiChatHit).toBeDefined()
+    expect(vtiChatHit?.headers.authorization).toBe("Bearer sbx-cs-vti")
+    expect(vtiChatHit?.body.model).toBe("gpt-6-luna")
+    expect(vtiChatHit?.body.reasoning_effort).toBe("max")
+    expect(typeof vtiChatHit?.body.prompt_cache_key).toBe("string")
+    expect(vtiChatHit?.body.include).toBeUndefined()
+    expect(vtiChatHit?.body.reasoning_summary).toBeUndefined()
 
     const fallbackHits = await promptWithModel("vti", "custom-qwen")
     const chatHit = fallbackHits.find((h) => h.path === "/connector/ai/v1/chat/completions")
