@@ -51,8 +51,8 @@ if "$container"; then
     done
     [ -d "$script_dir/models-md" ] || die 'missing models-md'
     for plugin_file in plugins/adopt-catalog.ts plugins/cap-context.ts \
-        plugins/commander/package.json plugins/commander/prompt.ts \
-        plugins/commander/rpc.ts plugins/commander/server.ts plugins/commander/tui.ts \
+        plugins/orchestrator/package.json plugins/orchestrator/prompt.ts \
+        plugins/orchestrator/rpc.ts plugins/orchestrator/server.ts plugins/orchestrator/tui.ts \
         plugins/deepseek-fallback/package.json plugins/deepseek-fallback/rpc.ts \
         plugins/deepseek-fallback/server.ts plugins/deepseek-fallback/tui.ts; do
         [ -f "$script_dir/$plugin_file" ] || die "missing $plugin_file"
@@ -138,9 +138,10 @@ mkdir -p "$target/plugins"
 install -m 0644 "$script_dir/plugins/adopt-catalog.ts" "$target/plugins/adopt-catalog.ts"
 install -m 0644 "$script_dir/plugins/cap-context.ts" "$target/plugins/cap-context.ts"
 rm -rf -- "$target/plugins/commander"
-mkdir -p "$target/plugins/commander"
-for commander_file in package.json prompt.ts rpc.ts server.ts tui.ts; do
-    install -m 0644 "$script_dir/plugins/commander/$commander_file" "$target/plugins/commander/$commander_file"
+rm -rf -- "$target/plugins/orchestrator"
+mkdir -p "$target/plugins/orchestrator"
+for orchestrator_file in package.json prompt.ts rpc.ts server.ts tui.ts; do
+    install -m 0644 "$script_dir/plugins/orchestrator/$orchestrator_file" "$target/plugins/orchestrator/$orchestrator_file"
 done
 rm -rf -- "$target/plugins/deepseek-fallback"
 mkdir -p "$target/plugins/deepseek-fallback"

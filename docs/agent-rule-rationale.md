@@ -333,7 +333,7 @@ E3 执行循环、启动与接续核对、第二次执行前固化流程、必�
 
 ## 指挥者模式按会话切换（2026-11-23）
 
-对应制品：[`AGENTS.global.md`](../AGENTS.global.md)、[`plugins/commander/`](../plugins/commander/)、[`models-md/claude-fable-5-2.md`](../models-md/claude-fable-5-2.md) 与 [`install.sh`](../install.sh)。
+对应制品：[`AGENTS.global.md`](../AGENTS.global.md)、[`plugins/orchestrator/`](../plugins/orchestrator/)、[`models-md/claude-fable-5-2.md`](../models-md/claude-fable-5-2.md) 与 [`install.sh`](../install.sh)。
 
 **依据**：此前「指挥者模式」直接写在 `models-md/claude-fable-5-2.md` 中，只要会话选用 `claude-fable-5-2` 就会无条件强制走 `subagent` 委派，既无法在轻量任务中关闭，也无法在其他模型会话中按需启用；同时 `AGENTS.global.md` §5.2 仍常驻携带「任务分流」和「子代理模型」规则，使未启用指挥者模式的普通会话与承担具体执行的 `subagent` worker 子会话也持续承担委派指令成本，并可能诱导子会话继续套娃分流。强制委派与子代理调度属于会话级工作方式选择，而非所有请求的常驻前提或单一模型的缺陷校准。
 
@@ -342,12 +342,12 @@ E3 执行循环、启动与接续核对、第二次执行前固化流程、必�
 - 所有模型（含 `claude-fable-5-2`）的新会话默认关闭指挥者模式；状态持久化在根会话的 `session.metadata.commander` 中，跨会话互不影响，压缩上下文后仍保持原状态。
 - TUI 入口通过 `keymap.layer` 注册命令面板项「切换指挥者模式」（`commander.toggle`）与 `/commander [on|off|status]` 斜杠命令，借助插件 RPC 读写根会话状态并用 Toast 反馈，避免把开关状态写入对话历史。未进入会话时执行开启命令会新建会话并立即启用。
 - 服务端 `context` hook 仅在主会话（无 `parentID`）且 `metadata.commander === true` 时向当次模型请求的 `event.system` 注入指挥者提示词；关闭后下一次请求立即停止注入。`subagent` 子会话带有 `parentID`，始终保持 worker 角色，不继承指挥者提示词；标题生成等辅助请求也不注入。
-- `AGENTS.global.md` §5.2 仅保留初始调查边界以及按可逆性、风险与爆炸半径确定计划和验证强度的规则；原「任务分流」并入指挥者提示词的原子任务拆解与并行派发条款，原「子代理模型」分工（代码审查与安全审计使用 `openrouter/z-ai/glm-5.3-flash`，其他工作使用 `openrouter/deepseek/deepseek-v4.1-flash-1017`，用户明确指定时以用户为准）迁入 [`plugins/commander/prompt.ts`](../plugins/commander/prompt.ts)。未开启指挥者模式时若偶发调用 `subagent`，`general` 和 `explore` 仍由 `templates/opencode.json` 中的默认模型兜底，代价是关闭指挥者模式时不再常驻注入审计子代理改传 `glm-5.3-flash` 的提示词约定。
+- `AGENTS.global.md` §5.2 仅保留初始调查边界以及按可逆性、风险与爆炸半径确定计划和验证强度的规则；原「任务分流」并入指挥者提示词的原子任务拆解与并行派发条款，原「子代理模型」分工（代码审查与安全审计使用 `openrouter/z-ai/glm-5.3-flash`，其他工作使用 `openrouter/deepseek/deepseek-v4.1-flash-1017`，用户明确指定时以用户为准）迁入 [`plugins/orchestrator/prompt.ts`](../plugins/orchestrator/prompt.ts)。未开启指挥者模式时若偶发调用 `subagent`，`general` 和 `explore` 仍由 `templates/opencode.json` 中的默认模型兜底，代价是关闭指挥者模式时不再常驻注入审计子代理改传 `glm-5.3-flash` 的提示词约定。
 - 仅做提示词注入，不隐藏或拦截执行工具，并明确保留全局及模型专用约束中的权限、安全审批与硬性停止边界。`claude-fable-5-2.md` 保留持续推进、普通障碍排解、共享状态核对、范围收敛与独立成文报告等模型校准，相关措辞改为同时兼容直接执行与子代理委派。
 
 ## DeepSeek 免费额度原位回退（2026-11-23）
 
-对应制品：[`plugins/deepseek-fallback/`](../plugins/deepseek-fallback/)、[`templates/opencode.json`](../templates/opencode.json)、[`plugins/commander/prompt.ts`](../plugins/commander/prompt.ts) 与 [`install.sh`](../install.sh)。
+对应制品：[`plugins/deepseek-fallback/`](../plugins/deepseek-fallback/)、[`templates/opencode.json`](../templates/opencode.json)、[`plugins/orchestrator/prompt.ts`](../plugins/orchestrator/prompt.ts) 与 [`install.sh`](../install.sh)。
 
 **依据**：OpenCode Console 提供免费的 `opencode/deepseek-v4.1-flash-free`，适合优先承担通用子代理（及手动选用该模型的会话）请求，仅在免费额度用尽或触发免费层限流时再回退到付费的 `openrouter/deepseek/deepseek-v4.1-flash-1017`。评估第三方包 `opencode-runtime-fallback@0.3.1` 时发现两项不适配：一是它仅支持按 `agent` 或全局绑定回退链，不支持按当前请求模型过滤，可能将借用 `general` 运行的 `glm-5.3-flash` 审计或主会话其他模型误切到 DeepSeek；二是它通过终止当前执行步再二次发送续写消息实现切换，在 OpenCode `v2.3.2`（`subagent` 始终后台运行）中会导致核心先向父会话推送 `<subagent state="error">` 并额外唤醒父会话一轮。
 
@@ -371,11 +371,11 @@ E3 执行循环、启动与接续核对、第二次执行前固化流程、必�
 
 ## Agent 默认模型迁至 VTI GPT-6 Luna（2026-11-24）
 
-对应制品：[`templates/opencode.json`](../templates/opencode.json) 与 [`plugins/commander/prompt.ts`](../plugins/commander/prompt.ts)。
+对应制品：[`templates/opencode.json`](../templates/opencode.json) 与 [`plugins/orchestrator/prompt.ts`](../plugins/orchestrator/prompt.ts)。
 
 **依据**：按用户实际账单单价，`vti/gpt-6-luna`（输入 `$0.01664`、输出 `$0.06239`、缓存写 `$0.02080`、缓存读 `$0.001664` / M tokens）显著低于 `openrouter/deepseek/deepseek-v4.1-flash-1017`（输入 `$0.0784`、输出 `$0.2352`、缓存读 `$0.002352` / M tokens），且 `title`、`compaction`、`summary` 原已使用 `gpt-6-luna`，切至 `vti` 渠道可直接降本。
 
-**决策与取舍**：将 `templates/opencode.json` 中的 `title` 设为 `vti/gpt-6-luna`，`compaction`、`summary`、`general`、`explore` 以及 [`plugins/commander/prompt.ts`](../plugins/commander/prompt.ts) 中的通用子代理模型设为 `vti/gpt-6-luna#max`，通过 `#max` 思考档位弥补部分推理差距，并保持 `providers.vti.models["gpt-6-luna"]` 为 `{}` 以避免把高推理配置强加给 `title`。指挥者模式的代码审查与安全审计子代理继续保留 `openrouter/z-ai/glm-5.3-flash`，维持异构模型交叉审查；[`plugins/deepseek-fallback/`](../plugins/deepseek-fallback/) 保留安装，继续为手动选用 `opencode/deepseek-v4.1-flash-free` 的会话提供额度/限流原位回退。
+**决策与取舍**：将 `templates/opencode.json` 中的 `title` 设为 `vti/gpt-6-luna`，`compaction`、`summary`、`general`、`explore` 以及 [`plugins/orchestrator/prompt.ts`](../plugins/orchestrator/prompt.ts) 中的通用子代理模型设为 `vti/gpt-6-luna#max`，通过 `#max` 思考档位弥补部分推理差距，并保持 `providers.vti.models["gpt-6-luna"]` 为 `{}` 以避免把高推理配置强加给 `title`。指挥者模式的代码审查与安全审计子代理继续保留 `openrouter/z-ai/glm-5.3-flash`，维持异构模型交叉审查；[`plugins/deepseek-fallback/`](../plugins/deepseek-fallback/) 保留安装，继续为手动选用 `opencode/deepseek-v4.1-flash-free` 的会话提供额度/限流原位回退。
 
 ## 维护类 Agent 拆分独立 Chat Completions 渠道（2026-11-25）
 
@@ -384,3 +384,9 @@ E3 执行循环、启动与接续核对、第二次执行前固化流程、必�
 **依据**：实测在压缩包含带图工具结果（如 `read` 图片）的会话时，`vti/gpt-6-luna` 走 OpenAI Responses（`/v1/responses`）会将图片内嵌于 `function_call_output`，VTI 网关拒绝并返回 HTTP 400（`工具结果含图片，请为该模型启用 Anthropic 格式兼容`）；即使客户端改走 `/v1/messages`，VTI 服务端对 `gpt-6-luna` 同样返回该 400 错误。而同一 `gpt-6-luna` 模型在走 OpenAI Chat Completions（`/v1/chat/completions`）时，OpenCode 会将工具结果中的图片拆为纯文本 `role: "tool"` 加紧随其后的 `role: "user"`（`image_url`），实测 VTI 接受 `user` 消息带图、模型可准确识别图像内容，且 `reasoning_effort: "max"` 正常触发思考。同时实测压缩含 PDF 工具结果的会话时，VTI `/v1/chat/completions` 会拒绝 `type: "file"` 附件（HTTP 400：`消息、工具或图片格式不受支持`），且在 `capabilities.freeform` 非空时 `compaction` 携带的非 function 工具会被拒绝（HTTP 400：`tools[13]：须为 function 工具，包含函数名称和对象形式的参数 schema`）。
 
 **决策与取舍**：在 `templates/opencode.json` 中新增独立的 `vti-chat` provider（`canonical: "openai"`、`package: "@opencode/ai/providers/openai/chat"`），仅声明 `gpt-6-luna` 一个模型，直接继承内置 `openai` 目录的显示名、价格、上下文/输出上限与全部推理档位，同时仅显式覆盖 `capabilities`（`freeform: []`、`input: ["text", "image"]`，剔除 freeform 工具并使 PDF 附件在压缩时安全降级为简短文本说明），不限制 `limit.context`（因 `canonical` 合并晚于 `plugins/cap-context.ts`，保留目录默认 1M 窗口作为压缩兜底，而主会话模型仍受 272k 上限约束），并将 `title`、`compaction`、`summary` 统一指向 `vti-chat/gpt-6-luna#max`。这三类维护代理均为单轮生成，不依赖 Responses API 的多轮加密思考链透传；保留 `vti/gpt-6-luna` 走原生 `/v1/responses` 供 `general`、`explore` 与日常多轮工具调用使用，同时让 `plugins/adopt-catalog.ts` 继续只作用于 `vti`、不做特殊分支。由于 OpenCode V2 的 `disabled: true` 会导致 agent 解析静默回退到主会话模型，仅靠纯配置无法隐藏，`VTI (Chat)` 及其单一模型会在 `/models` 中可见，作为换取零插件、零实验性 hook 依赖的明确取舍。
+
+## 指挥者模式插件重命名为 orchestrator（2026-11-25）
+
+对应制品：[`plugins/orchestrator/`](../plugins/orchestrator/)、[`install.sh`](../install.sh)、[`README.md`](../README.md) 与 [`scripts/verify-orchestrator-plugin.test.ts`](../scripts/verify-orchestrator-plugin.test.ts)。
+
+**决策与取舍**：按用户要求将插件与斜杠入口从 `commander`（`/commander`）统一重命名为 `orchestrator`（`/orchestrator`），同步更新插件 ID、RPC 命名空间、命令 ID（`orchestrator.toggle`）、会话状态键（`session.metadata.orchestrator`）及测试入口。提示词正文与界面中文称呼保持既有「指挥者模式」不变，不改动已验证的行为契约；不保留旧键兼容层或别名，`install.sh` 保留对旧目标目录 `$target/plugins/commander` 的清理以避免升级安装时新旧插件并存。

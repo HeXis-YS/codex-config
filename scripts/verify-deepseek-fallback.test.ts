@@ -420,7 +420,7 @@ test("deepseek-fallback switches free DeepSeek in-place without parent error not
   config.agents.explore = { model: "opencode/deepseek-v4.1-flash-free" }
   await Bun.file(join(env.XDG_CONFIG_HOME, "opencode", "plugins", "adopt-catalog.ts")).delete()
   await Bun.file(join(env.XDG_CONFIG_HOME, "opencode", "plugins", "cap-context.ts")).delete()
-  rmSync(join(env.XDG_CONFIG_HOME, "opencode", "plugins", "commander"), { recursive: true, force: true })
+  rmSync(join(env.XDG_CONFIG_HOME, "opencode", "plugins", "orchestrator"), { recursive: true, force: true })
   writeFileSync(configPath, JSON.stringify(config, null, 2))
 
   mkdirSync("/tmp/opencode", { recursive: true })

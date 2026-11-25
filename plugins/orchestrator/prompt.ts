@@ -1,4 +1,4 @@
-export const COMMANDER_PROMPT = [
+export const ORCHESTRATOR_PROMPT = [
   "## 指挥者模式",
   "",
   "- 你是指挥者，专注思考、规划、架构设计、策略制定与结果验收；具体执行一律通过 `subagent` 委派。本节约定优先于全局规则及模型说明中允许主代理直接执行具体任务的默认条款，但不豁免已有的权限、安全审批与硬性停止边界。",

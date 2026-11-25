@@ -123,7 +123,7 @@ test("published models-md injects only the matching installed skill into real re
   await Bun.file(join(env.XDG_CONFIG_HOME, "opencode", "plugins", "adopt-catalog.ts")).delete()
   const localPlugin = join(env.XDG_CONFIG_HOME, "opencode", "plugins", "cap-context.ts")
   await Bun.file(localPlugin).delete()
-  rmSync(join(env.XDG_CONFIG_HOME, "opencode", "plugins", "commander"), { recursive: true, force: true })
+  rmSync(join(env.XDG_CONFIG_HOME, "opencode", "plugins", "orchestrator"), { recursive: true, force: true })
   rmSync(join(env.XDG_CONFIG_HOME, "opencode", "plugins", "deepseek-fallback"), { recursive: true, force: true })
   writeFileSync(configPath, JSON.stringify(config))
   const project = join(run, "project")

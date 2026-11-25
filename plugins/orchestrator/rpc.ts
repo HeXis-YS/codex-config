@@ -1,6 +1,6 @@
 import type { Rpc } from "@opencode/plugin/rpc"
 
-export type CommanderStatus = {
+export type OrchestratorStatus = {
   sessionID: string
   enabled: boolean
 }
@@ -15,8 +15,8 @@ const statusSchema = {
   additionalProperties: false,
 } as const
 
-export const CommanderRpc = {
-  id: "commander",
+export const OrchestratorRpc = {
+  id: "orchestrator",
   methods: {
     status: {
       input: {

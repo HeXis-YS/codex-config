@@ -1,5 +1,5 @@
 import { Plugin } from "@opencode/plugin/tui"
-import { CommanderRpc, type CommanderStatus } from "./rpc"
+import { OrchestratorRpc, type OrchestratorStatus } from "./rpc"
 
 type Action = "toggle" | "on" | "off" | "status"
 
@@ -13,19 +13,19 @@ function parseAction(input?: string): Action | undefined {
 }
 
 export default Plugin.define({
-  id: "commander",
+  id: "orchestrator",
   setup(context) {
     context.keymap.layer(() => ({
       mode: "global",
       commands: [
         {
-          id: "commander.toggle",
+          id: "orchestrator.toggle",
           title: "切换指挥者模式",
-          description: "开启或关闭当前会话的指挥者模式（支持 /commander [on|off|status]）",
+          description: "开启或关闭当前会话的指挥者模式（支持 /orchestrator [on|off|status]）",
           group: "Session",
           palette: true,
           slash: {
-            name: "commander",
+            name: "orchestrator",
             arguments: true,
           },
           run: async (input) => {
@@ -33,14 +33,14 @@ export default Plugin.define({
             if (!action) {
               context.ui.toast.show({
                 title: "指挥者模式",
-                message: "用法：/commander [on|off|status]",
+                message: "用法：/orchestrator [on|off|status]",
                 variant: "warning",
               })
               return
             }
 
             try {
-              const rpc = context.client.rpc(CommanderRpc)
+              const rpc = context.client.rpc(OrchestratorRpc)
               const route = context.ui.router.current()
 
               if (route.type !== "session") {
@@ -90,7 +90,7 @@ export default Plugin.define({
               const rpcLocation = { directory: location.directory }
 
               if (action === "status") {
-                const status = (await rpc.status({ sessionID: rootID }, { location: rpcLocation })) as CommanderStatus
+                const status = (await rpc.status({ sessionID: rootID }, { location: rpcLocation })) as OrchestratorStatus
                 context.ui.toast.show({
                   title: "指挥者模式",
                   message: status.enabled ? "当前会话：已开启" : "当前会话：已关闭",
@@ -103,7 +103,7 @@ export default Plugin.define({
                 action === "toggle"
                   ? await rpc.toggle({ sessionID: rootID }, { location: rpcLocation })
                   : await rpc.set({ sessionID: rootID, enabled: action === "on" }, { location: rpcLocation })
-              ) as CommanderStatus
+              ) as OrchestratorStatus
               context.data.session.invalidate(status.sessionID)
               context.ui.toast.show({
                 title: "指挥者模式",
@@ -120,7 +120,7 @@ export default Plugin.define({
           },
         },
       ],
-      bindings: ["commander.toggle"],
+      bindings: ["orchestrator.toggle"],
     }))
   },
 })

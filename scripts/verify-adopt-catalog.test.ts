@@ -265,7 +265,7 @@ test("adopt-catalog inherits native catalog definitions for vti while preserving
   expect(config.agents.explore?.model).toBe("vti/gpt-6-luna#max")
 
   delete config.plugins
-  rmSync(join(env.XDG_CONFIG_HOME, "opencode", "plugins", "commander"), { recursive: true, force: true })
+  rmSync(join(env.XDG_CONFIG_HOME, "opencode", "plugins", "orchestrator"), { recursive: true, force: true })
   rmSync(join(env.XDG_CONFIG_HOME, "opencode", "plugins", "deepseek-fallback"), { recursive: true, force: true })
 
   config.providers = {

@@ -66,8 +66,9 @@ mkdir -p "$home/.config/opencode/model-skills/avoid-overengineering" \
 printf 'old copy\n' > "$home/.config/opencode/model-skills/avoid-overengineering/SKILL.md"
 printf 'old reference\n' > "$home/.config/opencode/models-md/references/verification.md"
 printf 'old name\n' > "$home/.config/opencode/models-md/gpt.md"
-mkdir -p "$home/.config/opencode/plugins/commander" "$home/.config/opencode/plugins/deepseek-fallback"
+mkdir -p "$home/.config/opencode/plugins/commander" "$home/.config/opencode/plugins/orchestrator" "$home/.config/opencode/plugins/deepseek-fallback"
 printf 'obsolete\n' > "$home/.config/opencode/plugins/commander/obsolete.ts"
+printf 'obsolete\n' > "$home/.config/opencode/plugins/orchestrator/obsolete.ts"
 printf 'obsolete\n' > "$home/.config/opencode/plugins/deepseek-fallback/obsolete.ts"
 printf '{"personal":true}\n' > "$home/.config/opencode/opencode.json"
 custom_ignore="$tmp/custom-ignore"
@@ -98,7 +99,8 @@ done
 grep -q '^#### 新增测试的依据$' "$target/models-md/gpt-6.md"
 cmp "$root/plugins/adopt-catalog.ts" "$target/plugins/adopt-catalog.ts"
 cmp "$root/plugins/cap-context.ts" "$target/plugins/cap-context.ts"
-diff -r "$root/plugins/commander" "$target/plugins/commander"
+[ ! -e "$target/plugins/commander" ]
+diff -r "$root/plugins/orchestrator" "$target/plugins/orchestrator"
 diff -r "$root/plugins/deepseek-fallback" "$target/plugins/deepseek-fallback"
 cmp "$root/templates/opencode.json" "$target/opencode.json"
 [ "$(stat -c %a "$target/opencode.json")" = 600 ]
@@ -130,7 +132,7 @@ run_install "$fresh_home" "$tmp/fresh-config" legacy
 cmp "$root/templates/opencode.json" "$tmp/fresh-config/opencode/opencode.json"
 cmp "$root/AGENTS.global.md" "$tmp/fresh-config/opencode/AGENTS.md"
 cmp "$root/plugins/adopt-catalog.ts" "$tmp/fresh-config/opencode/plugins/adopt-catalog.ts"
-diff -r "$root/plugins/commander" "$tmp/fresh-config/opencode/plugins/commander"
+diff -r "$root/plugins/orchestrator" "$tmp/fresh-config/opencode/plugins/orchestrator"
 diff -r "$root/plugins/deepseek-fallback" "$tmp/fresh-config/opencode/plugins/deepseek-fallback"
 for ignore_file in "$fresh_home/.gitignore_global" "$fresh_home/.gitignore_template"; do
     grep -Fqx '.opencode' "$ignore_file"
@@ -184,7 +186,7 @@ for container in first second; do
     cmp "$root/AGENTS.global.md" "$container_target/AGENTS.md"
     cmp "$root/plugins/adopt-catalog.ts" "$container_target/plugins/adopt-catalog.ts"
     cmp "$root/plugins/cap-context.ts" "$container_target/plugins/cap-context.ts"
-    diff -r "$root/plugins/commander" "$container_target/plugins/commander"
+    diff -r "$root/plugins/orchestrator" "$container_target/plugins/orchestrator"
     diff -r "$root/plugins/deepseek-fallback" "$container_target/plugins/deepseek-fallback"
     # Model instructions are installed locally even when shared skills are read-only.
     for model in gpt-6 claude-fable-5-2 claude-opus-5-5; do

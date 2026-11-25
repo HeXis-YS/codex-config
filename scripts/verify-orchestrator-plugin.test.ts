@@ -1,16 +1,16 @@
-// Run: bun test scripts/verify-commander-plugin.test.ts
+// Run: bun test scripts/verify-orchestrator-plugin.test.ts
 // Uses isolated HOME/XDG directories, a standalone OpenCode V2 server, and a
 // local provider stub; never calls a real model, registry, or live config.
 import { expect, mock, test } from "bun:test"
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs"
 import { createServer } from "node:net"
 import { dirname, join, resolve } from "node:path"
-import { COMMANDER_PROMPT } from "../plugins/commander/prompt"
-import type { CommanderStatus } from "../plugins/commander/rpc"
+import { ORCHESTRATOR_PROMPT } from "../plugins/orchestrator/prompt"
+import type { OrchestratorStatus } from "../plugins/orchestrator/rpc"
 
 const root = resolve(import.meta.dir, "..")
 mkdirSync(join(root, ".opencode", "runs"), { recursive: true })
-const run = mkdtempSync(join(root, ".opencode", "runs", "commander."))
+const run = mkdtempSync(join(root, ".opencode", "runs", "orchestrator."))
 const binary = Bun.which("opencode")
 if (!binary) throw new Error("opencode is required")
 console.info(`Records: ${run}`)
@@ -34,7 +34,7 @@ const env = {
   XDG_CACHE_HOME: join(run, "cache"),
   XDG_DATA_HOME: join(run, "data"),
   XDG_STATE_HOME: join(run, "state"),
-  SANDBOX_ID: process.env.SANDBOX_ID ?? "verify-commander",
+  SANDBOX_ID: process.env.SANDBOX_ID ?? "verify-orchestrator",
   TERM: "xterm",
   OPENCODE_LOG_LEVEL: "DEBUG",
   OPENCODE_DISABLE_AUTOUPDATE: "1",
@@ -47,7 +47,7 @@ writeFileSync(
   join(run, "conditions.json"),
   JSON.stringify(
     {
-      entry: "bun test scripts/verify-commander-plugin.test.ts",
+      entry: "bun test scripts/verify-orchestrator-plugin.test.ts",
       time: new Date().toISOString(),
       head: git("rev-parse", "HEAD").trim(),
       bun: Bun.version,
@@ -71,9 +71,9 @@ async function pickFreePort(): Promise<number> {
   })
 }
 
-test("commander plugin toggles per-session prompt injection while isolating other sessions and subagents", async () => {
+test("orchestrator plugin toggles per-session prompt injection while isolating other sessions and subagents", async () => {
   // Verify TUI plugin source transpiles cleanly and imports only host-provided or local modules.
-  const tuiSource = readFileSync(join(root, "plugins", "commander", "tui.ts"), "utf8")
+  const tuiSource = readFileSync(join(root, "plugins", "orchestrator", "tui.ts"), "utf8")
   const scanned = new Bun.Transpiler({ loader: "ts", target: "bun" }).scan(tuiSource)
   expect(scanned.imports.map((item) => item.path)).toEqual(["@opencode/plugin/tui", "./rpc"])
 
@@ -120,7 +120,7 @@ test("commander plugin toggles per-session prompt injection while isolating othe
 
   const configPath = join(env.XDG_CONFIG_HOME, "opencode", "opencode.json")
   const config = await Bun.file(configPath).json()
-  // Test only the local commander plugin without network calls to npm for models-md.
+  // Test only the local orchestrator plugin without network calls to npm for models-md.
   delete config.plugins
   config.providers = {
     mock: {
@@ -146,7 +146,7 @@ test("commander plugin toggles per-session prompt injection while isolating othe
   writeFileSync(configPath, JSON.stringify(config, null, 2))
 
   mkdirSync("/tmp/opencode", { recursive: true })
-  const project = mkdtempSync("/tmp/opencode/commander-project.")
+  const project = mkdtempSync("/tmp/opencode/orchestrator-project.")
   const port = await pickFreePort()
   const baseUrl = `http://127.0.0.1:${port}`
   const serverProc = Bun.spawn([binary, "serve", "--hostname", "127.0.0.1", "--port", String(port)], {
@@ -200,7 +200,7 @@ test("commander plugin toggles per-session prompt injection while isolating othe
   const rpc = async <T>(method: "status" | "set" | "toggle", input: Record<string, unknown>) => {
     const res = await api<{ output: T }>(
       "POST",
-      `/api/rpc/commander/${method}?location[directory]=${encodeURIComponent(project)}`,
+      `/api/rpc/orchestrator/${method}?location[directory]=${encodeURIComponent(project)}`,
       { input },
     )
     return res.output
@@ -230,17 +230,17 @@ test("commander plugin toggles per-session prompt injection while isolating othe
     type PluginList = {
       data: { id: string; features: Record<string, boolean>; state: { status: string; error?: unknown } }[]
     }
-    let commanderPlugin: PluginList["data"][number] | undefined
+    let orchestratorPlugin: PluginList["data"][number] | undefined
     for (let i = 0; i < 100; i++) {
       const plugins = await api<PluginList>("GET", `/api/plugin?location[directory]=${encodeURIComponent(project)}`)
       writeFileSync(join(run, "plugins.json"), JSON.stringify(plugins, null, 2))
-      commanderPlugin = plugins.data.find((item) => item.id === "commander")
-      if (commanderPlugin && commanderPlugin.state.status !== "loading") break
+      orchestratorPlugin = plugins.data.find((item) => item.id === "orchestrator")
+      if (orchestratorPlugin && orchestratorPlugin.state.status !== "loading") break
       await Bun.sleep(100)
     }
-    expect(commanderPlugin, `commander plugin not discovered; see ${run}/plugins.json`).toBeDefined()
-    expect(commanderPlugin?.state.status).toBe("active")
-    expect(commanderPlugin?.features).toMatchObject({ server: true, tui: true })
+    expect(orchestratorPlugin, `orchestrator plugin not discovered; see ${run}/plugins.json`).toBeDefined()
+    expect(orchestratorPlugin?.state.status).toBe("active")
+    expect(orchestratorPlugin?.features).toMatchObject({ server: true, tui: true })
 
     const sessionA = await createSession({
       location: { directory: project },
@@ -251,37 +251,37 @@ test("commander plugin toggles per-session prompt injection while isolating othe
       model: { providerID: "mock", id: "claude-fable-5-2" },
     })
 
-    // 1. Default OFF on all new sessions (including claude-fable-5-2): neither commander prompt nor subagent model rules are injected.
-    const initialA = await rpc<CommanderStatus>("status", { sessionID: sessionA.id })
+    // 1. Default OFF on all new sessions (including claude-fable-5-2): neither orchestrator prompt nor subagent model rules are injected.
+    const initialA = await rpc<OrchestratorStatus>("status", { sessionID: sessionA.id })
     expect(initialA).toEqual({ sessionID: sessionA.id, enabled: false })
     const turn1 = await runTurn(sessionA.id, "Turn 1 default off")
     expect(turn1.primarySystem).not.toContain("## 指挥者模式")
     expect(turn1.primarySystem).not.toContain("glm-5.3-flash")
 
-    // 2. Manual ON via toggle on sessionA: injects exact COMMANDER_PROMPT into primary loop, not title.
-    const toggledOn = await rpc<CommanderStatus>("toggle", { sessionID: sessionA.id })
+    // 2. Manual ON via toggle on sessionA: injects exact ORCHESTRATOR_PROMPT into primary loop, not title.
+    const toggledOn = await rpc<OrchestratorStatus>("toggle", { sessionID: sessionA.id })
     expect(toggledOn).toEqual({ sessionID: sessionA.id, enabled: true })
     const sessionC = await createSession({
       location: { directory: project },
       model: { providerID: "mock", id: "claude-fable-5-2" },
     })
-    await rpc<CommanderStatus>("set", { sessionID: sessionC.id, enabled: true })
-    const turnC = await runTurn(sessionC.id, "First turn with commander enabled")
-    expect(turnC.primarySystem).toContain(JSON.stringify(COMMANDER_PROMPT).slice(1, -1))
+    await rpc<OrchestratorStatus>("set", { sessionID: sessionC.id, enabled: true })
+    const turnC = await runTurn(sessionC.id, "First turn with orchestrator enabled")
+    expect(turnC.primarySystem).toContain(JSON.stringify(ORCHESTRATOR_PROMPT).slice(1, -1))
     for (const titleSys of turnC.titleSystems) {
       expect(titleSys).not.toContain("## 指挥者模式")
     }
 
-    const turn2 = await runTurn(sessionA.id, "Turn 2 commander enabled")
-    expect(turn2.primarySystem).toContain(JSON.stringify(COMMANDER_PROMPT).slice(1, -1))
+    const turn2 = await runTurn(sessionA.id, "Turn 2 orchestrator enabled")
+    expect(turn2.primarySystem).toContain(JSON.stringify(ORCHESTRATOR_PROMPT).slice(1, -1))
 
     // 3. Per-session isolation: sessionB remains OFF.
-    const statusB = await rpc<CommanderStatus>("status", { sessionID: sessionB.id })
+    const statusB = await rpc<OrchestratorStatus>("status", { sessionID: sessionB.id })
     expect(statusB).toEqual({ sessionID: sessionB.id, enabled: false })
     const turnB = await runTurn(sessionB.id, "Session B stays off")
     expect(turnB.primarySystem).not.toContain("## 指挥者模式")
 
-    // 4. Child subagent isolation: child of enabled sessionA does NOT receive commander prompt,
+    // 4. Child subagent isolation: child of enabled sessionA does NOT receive orchestrator prompt,
     // and querying status on child resolves to root sessionA.
     const childA = await createSession({
       parentID: sessionA.id,
@@ -289,23 +289,23 @@ test("commander plugin toggles per-session prompt injection while isolating othe
       location: { directory: project },
       model: { providerID: "mock", id: "claude-fable-5-2" },
     })
-    const childStatus = await rpc<CommanderStatus>("status", { sessionID: childA.id })
+    const childStatus = await rpc<OrchestratorStatus>("status", { sessionID: childA.id })
     expect(childStatus).toEqual({ sessionID: sessionA.id, enabled: true })
     const turnChild = await runTurn(childA.id, "Subagent worker task")
     expect(turnChild.primarySystem).not.toContain("## 指挥者模式")
     expect(turnChild.primarySystem).not.toContain("glm-5.3-flash")
 
-    // 5. Manual OFF mid-session on sessionA: next turn immediately drops commander prompt.
-    const toggledOff = await rpc<CommanderStatus>("toggle", { sessionID: sessionA.id })
+    // 5. Manual OFF mid-session on sessionA: next turn immediately drops orchestrator prompt.
+    const toggledOff = await rpc<OrchestratorStatus>("toggle", { sessionID: sessionA.id })
     expect(toggledOff).toEqual({ sessionID: sessionA.id, enabled: false })
-    const turn3 = await runTurn(sessionA.id, "Turn 3 commander disabled again")
+    const turn3 = await runTurn(sessionA.id, "Turn 3 orchestrator disabled again")
     expect(turn3.primarySystem).not.toContain("## 指挥者模式")
 
     // 6. TUI entrypoint command layer wired to the live server RPC and session APIs.
     mock.module("@opencode/plugin/tui", () => ({
       Plugin: { define: <T>(def: T) => def },
     }))
-    const { default: tuiPlugin } = await import("../plugins/commander/tui")
+    const { default: tuiPlugin } = await import("../plugins/orchestrator/tui")
     type LayerDef = { commands: { id: string; slash?: { name: string }; run: (input?: string) => Promise<void> }[] }
     let registeredLayer: (() => LayerDef) | undefined
     const toasts: { title?: string; message: string; variant?: string }[] = []
@@ -352,38 +352,38 @@ test("commander plugin toggles per-session prompt injection while isolating othe
         },
         rpc: () => ({
           status: (input: Record<string, unknown>, opts?: { location?: { directory: string } }) =>
-            api<{ output: CommanderStatus }>(
+            api<{ output: OrchestratorStatus }>(
               "POST",
-              `/api/rpc/commander/status?location[directory]=${encodeURIComponent(opts?.location?.directory ?? project)}`,
+              `/api/rpc/orchestrator/status?location[directory]=${encodeURIComponent(opts?.location?.directory ?? project)}`,
               { input },
             ).then((r) => r.output),
           set: (input: Record<string, unknown>, opts?: { location?: { directory: string } }) =>
-            api<{ output: CommanderStatus }>(
+            api<{ output: OrchestratorStatus }>(
               "POST",
-              `/api/rpc/commander/set?location[directory]=${encodeURIComponent(opts?.location?.directory ?? project)}`,
+              `/api/rpc/orchestrator/set?location[directory]=${encodeURIComponent(opts?.location?.directory ?? project)}`,
               { input },
             ).then((r) => r.output),
           toggle: (input: Record<string, unknown>, opts?: { location?: { directory: string } }) =>
-            api<{ output: CommanderStatus }>(
+            api<{ output: OrchestratorStatus }>(
               "POST",
-              `/api/rpc/commander/toggle?location[directory]=${encodeURIComponent(opts?.location?.directory ?? project)}`,
+              `/api/rpc/orchestrator/toggle?location[directory]=${encodeURIComponent(opts?.location?.directory ?? project)}`,
               { input },
             ).then((r) => r.output),
         }),
       },
     } as never)
 
-    const cmd = registeredLayer?.().commands.find((item) => item.id === "commander.toggle")
-    expect(cmd?.slash?.name).toBe("commander")
+    const cmd = registeredLayer?.().commands.find((item) => item.id === "orchestrator.toggle")
+    expect(cmd?.slash?.name).toBe("orchestrator")
 
-    // On home route: "/commander" creates a new session with commander ON and navigates to it.
+    // On home route: "/orchestrator" creates a new session with orchestrator ON and navigates to it.
     await cmd!.run("")
     expect(currentRoute.type).toBe("session")
     const homeCreatedID = (currentRoute as { type: "session"; sessionID: string }).sessionID
-    const turnHomeCreated = await runTurn(homeCreatedID, "Created from home with commander on")
-    expect(turnHomeCreated.primarySystem).toContain(JSON.stringify(COMMANDER_PROMPT).slice(1, -1))
+    const turnHomeCreated = await runTurn(homeCreatedID, "Created from home with orchestrator on")
+    expect(turnHomeCreated.primarySystem).toContain(JSON.stringify(ORCHESTRATOR_PROMPT).slice(1, -1))
 
-    // Invalid argument warning, status check, and "/commander off" on that session.
+    // Invalid argument warning, status check, and "/orchestrator off" on that session.
     await cmd!.run("invalid-arg")
     expect(toasts.at(-1)?.variant).toBe("warning")
     await cmd!.run("status")
