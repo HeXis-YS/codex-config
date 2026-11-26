@@ -390,3 +390,15 @@ E3 执行循环、启动与接续核对、第二次执行前固化流程、必�
 对应制品：[`plugins/orchestrator/`](../plugins/orchestrator/)、[`install.sh`](../install.sh)、[`README.md`](../README.md) 与 [`scripts/verify-orchestrator-plugin.test.ts`](../scripts/verify-orchestrator-plugin.test.ts)。
 
 **决策与取舍**：按用户要求将插件与斜杠入口从 `commander`（`/commander`）统一重命名为 `orchestrator`（`/orchestrator`），同步更新插件 ID、RPC 命名空间、命令 ID（`orchestrator.toggle`）、会话状态键（`session.metadata.orchestrator`）及测试入口。提示词正文与界面中文称呼保持既有「指挥者模式」不变，不改动已验证的行为契约；不保留旧键兼容层或别名，`install.sh` 保留对旧目标目录 `$target/plugins/commander` 的清理以避免升级安装时新旧插件并存。
+
+## 指挥者模式 `general` 软超时与子会话中止（2026-11-26）
+
+对应制品：[`plugins/orchestrator/server.ts`](../plugins/orchestrator/server.ts)、[`plugins/orchestrator/prompt.ts`](../plugins/orchestrator/prompt.ts)、[`README.md`](../README.md) 与 [`scripts/verify-orchestrator-plugin.test.ts`](../scripts/verify-orchestrator-plugin.test.ts)。
+
+**依据**：OpenCode V2 的 `subagent` 后台运行只在子会话进入 `idle` 时向父会话推送结果，高难度任务下 `general` 子代理若卡住或陷入无效循环，指挥者无法在运行中观察进度或止损；而 `explore` 仅负责信息收集，通常在合理时间内完成，无需额外超时打扰。
+
+**决策与取舍**：
+
+- **仅针对 `general` 的软超时**：通过 `ctx.tool.transform` 扩展内置 `subagent` 入参 schema，增加可选 `timeoutSec`（默认 180 秒，上限 3600 秒）并在透传原执行器前剥离该字段；仅在调用方为开启 `/orchestrator` 的根会话且目标 `agent === "general"` 时挂载计时器（`explore` 等其他子代理即使传参也忽略）。到点时通过 `ctx.event.subscribe` 累计的步数、重试数、最近工具调用与 `ctx.session.context` 摘录汇总为 `<orchestrator-timeout>` 合成消息唤醒指挥者，不自动强杀；单轮最多自动唤醒 5 次，发送 `subagent(sessionID)` 跟进时重置计时与次数，子会话完成、失败、中止或关闭指挥者模式时自动取消计时器。
+- **仅提供 `orchestrator_interrupt`（不提供删除）**：新增顶层工具调用 `ctx.session.interrupt({ sessionID, resume: false })` 中止运行中的子会话并保留完整记录供事后排查；调用前严格校验调用方为开启 `/orchestrator` 的根会话且目标属于其后代会话（fail-close），并在返回文本中提醒检查 `git status` / `git diff` 以核对已落盘改动。未开启 `/orchestrator` 的主会话与所有子会话在 `context` hook 中同时剥离 `timeoutSec` 字段与 `orchestrator_interrupt` 工具，保持零上下文噪音。
+- **提示词同步**：更新 `plugins/orchestrator/prompt.ts`，明确派发 `general` 时按任务难度设置 `timeoutSec`，并在观察到 worker 难以完成任务时视情况通过 `subagent(sessionID)` 给予提示、先中止后拆分重派，或直接由指挥者自己接手完成。

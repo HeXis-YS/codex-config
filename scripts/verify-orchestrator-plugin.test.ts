@@ -82,11 +82,60 @@ test("orchestrator plugin toggles per-session prompt injection while isolating o
   writeFileSync(join(run, "install.log"), Buffer.concat([install.stdout, install.stderr]))
   expect(install.exitCode).toBe(0)
 
+  type ToolDecl = {
+    type?: string
+    function?: { name?: string; parameters?: { properties?: Record<string, unknown> } }
+    name?: string
+    parameters?: { properties?: Record<string, unknown> }
+  }
   type Captured = {
     model: string
     messages: { role: string; content: unknown }[]
+    tools?: ToolDecl[]
   }
   const captured: Captured[] = []
+  let unrelatedSessionID = ""
+  let slowGeneralAborted = false
+
+  const respondChoice = (
+    model: string,
+    choice: {
+      index: number
+      message: {
+        role: "assistant"
+        content: string | null
+        tool_calls?: { id: string; type: "function"; function: { name: string; arguments: string } }[]
+      }
+      finish_reason: string
+    },
+    stream?: boolean,
+  ) => {
+    const result = {
+      id: "verification",
+      object: "chat.completion",
+      created: 0,
+      model,
+      choices: [choice],
+      usage: { prompt_tokens: 1, completion_tokens: 1, total_tokens: 2 },
+    }
+    if (!stream) return Response.json(result)
+    const delta = choice.message.tool_calls
+      ? {
+          role: "assistant",
+          tool_calls: choice.message.tool_calls.map((tc, index) => ({ index, ...tc })),
+        }
+      : { role: "assistant", content: choice.message.content ?? "" }
+    const chunk = {
+      ...result,
+      object: "chat.completion.chunk",
+      choices: [{ index: 0, delta, finish_reason: null }],
+    }
+    const finish = { ...chunk, choices: [{ index: 0, delta: {}, finish_reason: choice.finish_reason }] }
+    return new Response(`data: ${JSON.stringify(chunk)}\n\ndata: ${JSON.stringify(finish)}\n\ndata: [DONE]\n\n`, {
+      headers: { "content-type": "text/event-stream" },
+    })
+  }
+
   const providerServer = Bun.serve({
     hostname: "127.0.0.1",
     port: 0,
@@ -95,26 +144,222 @@ test("orchestrator plugin toggles per-session prompt injection while isolating o
         return new Response("not found", { status: 404 })
       }
       const body = (await request.json()) as Captured & { stream?: boolean }
-      captured.push({ model: body.model, messages: body.messages })
+      captured.push({ model: body.model, messages: body.messages, tools: body.tools })
       writeFileSync(join(run, "requests.json"), JSON.stringify(captured, null, 2))
-      const result = {
-        id: "verification",
-        object: "chat.completion",
-        created: 0,
-        model: body.model,
-        choices: [{ index: 0, message: { role: "assistant", content: "ok" }, finish_reason: "stop" }],
-        usage: { prompt_tokens: 1, completion_tokens: 1, total_tokens: 2 },
+
+      if (body.model === "title-model") {
+        return respondChoice(
+          body.model,
+          { index: 0, message: { role: "assistant", content: "Title" }, finish_reason: "stop" },
+          body.stream,
+        )
       }
-      if (!body.stream) return Response.json(result)
-      const chunk = {
-        ...result,
-        object: "chat.completion.chunk",
-        choices: [{ index: 0, delta: { role: "assistant", content: "ok" }, finish_reason: null }],
+
+      const serialized = JSON.stringify(body.messages)
+      const toolResults = body.messages.filter((m) => m.role === "tool")
+      const isChildSession = !serialized.includes("LAUNCH_")
+
+      // Child subagent behaviors
+      if (isChildSession && serialized.includes("CHILD_FAST_GENERAL")) {
+        return respondChoice(
+          body.model,
+          { index: 0, message: { role: "assistant", content: "FAST_GENERAL_DONE" }, finish_reason: "stop" },
+          body.stream,
+        )
       }
-      const finish = { ...chunk, choices: [{ index: 0, delta: {}, finish_reason: "stop" }] }
-      return new Response(`data: ${JSON.stringify(chunk)}\n\ndata: ${JSON.stringify(finish)}\n\ndata: [DONE]\n\n`, {
-        headers: { "content-type": "text/event-stream" },
-      })
+      if (isChildSession && serialized.includes("CHILD_SLOW_EXPLORE")) {
+        await Bun.sleep(1500)
+        return respondChoice(
+          body.model,
+          { index: 0, message: { role: "assistant", content: "SLOW_EXPLORE_DONE" }, finish_reason: "stop" },
+          body.stream,
+        )
+      }
+      if (isChildSession && serialized.includes("CHILD_STUCK_GENERAL")) {
+        await new Promise<void>((resolveWait) => {
+          const timer = setTimeout(resolveWait, 10_000)
+          request.signal.addEventListener(
+            "abort",
+            () => {
+              slowGeneralAborted = true
+              clearTimeout(timer)
+              resolveWait()
+            },
+            { once: true },
+          )
+        })
+        if (request.signal.aborted) {
+          return new Response("aborted", { status: 499 })
+        }
+        return respondChoice(
+          body.model,
+          { index: 0, message: { role: "assistant", content: "STUCK_GENERAL_UNEXPECTED_FINISH" }, finish_reason: "stop" },
+          body.stream,
+        )
+      }
+
+      // Parent orchestrator test scenarios
+      if (serialized.includes("LAUNCH_FAST_GENERAL") && toolResults.length === 0) {
+        return respondChoice(
+          body.model,
+          {
+            index: 0,
+            message: {
+              role: "assistant",
+              content: null,
+              tool_calls: [
+                {
+                  id: "call_fast_gen",
+                  type: "function",
+                  function: {
+                    name: "subagent",
+                    arguments: JSON.stringify({
+                      agent: "general",
+                      description: "fast general worker",
+                      prompt: "CHILD_FAST_GENERAL",
+                      timeoutSec: 1.5,
+                    }),
+                  },
+                },
+              ],
+            },
+            finish_reason: "tool_calls",
+          },
+          body.stream,
+        )
+      }
+
+      if (serialized.includes("LAUNCH_SLOW_EXPLORE") && toolResults.length === 0) {
+        return respondChoice(
+          body.model,
+          {
+            index: 0,
+            message: {
+              role: "assistant",
+              content: null,
+              tool_calls: [
+                {
+                  id: "call_slow_exp",
+                  type: "function",
+                  function: {
+                    name: "subagent",
+                    arguments: JSON.stringify({
+                      agent: "explore",
+                      description: "slow explore worker",
+                      prompt: "CHILD_SLOW_EXPLORE",
+                      timeoutSec: 0.4,
+                    }),
+                  },
+                },
+              ],
+            },
+            finish_reason: "tool_calls",
+          },
+          body.stream,
+        )
+      }
+
+      if (serialized.includes("LAUNCH_STUCK_GENERAL")) {
+        const timeoutMatch = serialized.match(/<orchestrator-timeout sessionID=\\"(ses_[^\\"]+)\\"/)
+        if (!timeoutMatch && toolResults.length === 0) {
+          return respondChoice(
+            body.model,
+            {
+              index: 0,
+              message: {
+                role: "assistant",
+                content: null,
+                tool_calls: [
+                  {
+                    id: "call_stuck_gen",
+                    type: "function",
+                    function: {
+                      name: "subagent",
+                      arguments: JSON.stringify({
+                        agent: "general",
+                        description: "stuck general worker",
+                        prompt: "CHILD_STUCK_GENERAL",
+                        timeoutSec: 0.7,
+                      }),
+                    },
+                  },
+                ],
+              },
+              finish_reason: "tool_calls",
+            },
+            body.stream,
+          )
+        }
+        if (timeoutMatch && toolResults.length === 1) {
+          // On soft-timeout wake-up: first attempt interrupting an unrelated session (must be rejected).
+          return respondChoice(
+            body.model,
+            {
+              index: 0,
+              message: {
+                role: "assistant",
+                content: null,
+                tool_calls: [
+                  {
+                    id: "call_interrupt_unrelated",
+                    type: "function",
+                    function: {
+                      name: "orchestrator_interrupt",
+                      arguments: JSON.stringify({
+                        sessionID: unrelatedSessionID,
+                        reason: "cross-session probe",
+                      }),
+                    },
+                  },
+                ],
+              },
+              finish_reason: "tool_calls",
+            },
+            body.stream,
+          )
+        }
+        if (timeoutMatch && toolResults.length === 2) {
+          // Then interrupt the real stuck child session.
+          return respondChoice(
+            body.model,
+            {
+              index: 0,
+              message: {
+                role: "assistant",
+                content: null,
+                tool_calls: [
+                  {
+                    id: "call_interrupt_child",
+                    type: "function",
+                    function: {
+                      name: "orchestrator_interrupt",
+                      arguments: JSON.stringify({
+                        sessionID: timeoutMatch[1],
+                        reason: "worker stuck on task",
+                      }),
+                    },
+                  },
+                ],
+              },
+              finish_reason: "tool_calls",
+            },
+            body.stream,
+          )
+        }
+        if (timeoutMatch && toolResults.length >= 3) {
+          return respondChoice(
+            body.model,
+            { index: 0, message: { role: "assistant", content: "ORCHESTRATOR_HANDLED_TIMEOUT" }, finish_reason: "stop" },
+            body.stream,
+          )
+        }
+      }
+
+      return respondChoice(
+        body.model,
+        { index: 0, message: { role: "assistant", content: "ok" }, finish_reason: "stop" },
+        body.stream,
+      )
     },
   })
 
@@ -219,9 +464,15 @@ test("orchestrator plugin toggles per-session prompt injection while isolating o
     expect(primary.length).toBeGreaterThan(0)
     const systemOf = (item: Captured) =>
       JSON.stringify(item.messages.filter((m) => m.role === "system" || m.role === "developer"))
+    const mainReq = primary.sort((a, b) => systemOf(b).length - systemOf(a).length)[0]!
+    const toolName = (t: ToolDecl) => t.function?.name ?? t.name
+    const toolProps = (t: ToolDecl) => t.function?.parameters?.properties ?? t.parameters?.properties ?? {}
+    const subagentDecl = (mainReq.tools ?? []).find((t) => toolName(t) === "subagent")
     return {
-      primarySystem: systemOf(primary.sort((a, b) => systemOf(b).length - systemOf(a).length)[0]!),
+      primarySystem: systemOf(mainReq),
       titleSystems: titles.map(systemOf),
+      toolNames: (mainReq.tools ?? []).map(toolName).filter((n): n is string => Boolean(n)),
+      subagentHasTimeoutSec: Boolean(subagentDecl && "timeoutSec" in toolProps(subagentDecl)),
     }
   }
 
@@ -250,15 +501,18 @@ test("orchestrator plugin toggles per-session prompt injection while isolating o
       location: { directory: project },
       model: { providerID: "mock", id: "claude-fable-5-2" },
     })
+    unrelatedSessionID = sessionB.id
 
-    // 1. Default OFF on all new sessions (including claude-fable-5-2): neither orchestrator prompt nor subagent model rules are injected.
+    // 1. Default OFF on all new sessions (including claude-fable-5-2): neither orchestrator prompt nor orchestrator tools are exposed.
     const initialA = await rpc<OrchestratorStatus>("status", { sessionID: sessionA.id })
     expect(initialA).toEqual({ sessionID: sessionA.id, enabled: false })
     const turn1 = await runTurn(sessionA.id, "Turn 1 default off")
     expect(turn1.primarySystem).not.toContain("## 指挥者模式")
     expect(turn1.primarySystem).not.toContain("glm-5.3-flash")
+    expect(turn1.toolNames).not.toContain("orchestrator_interrupt")
+    expect(turn1.subagentHasTimeoutSec).toBe(false)
 
-    // 2. Manual ON via toggle on sessionA: injects exact ORCHESTRATOR_PROMPT into primary loop, not title.
+    // 2. Manual ON via toggle on sessionA: injects exact ORCHESTRATOR_PROMPT and exposes timeoutSec + orchestrator_interrupt.
     const toggledOn = await rpc<OrchestratorStatus>("toggle", { sessionID: sessionA.id })
     expect(toggledOn).toEqual({ sessionID: sessionA.id, enabled: true })
     const sessionC = await createSession({
@@ -268,20 +522,26 @@ test("orchestrator plugin toggles per-session prompt injection while isolating o
     await rpc<OrchestratorStatus>("set", { sessionID: sessionC.id, enabled: true })
     const turnC = await runTurn(sessionC.id, "First turn with orchestrator enabled")
     expect(turnC.primarySystem).toContain(JSON.stringify(ORCHESTRATOR_PROMPT).slice(1, -1))
+    expect(turnC.toolNames).toContain("orchestrator_interrupt")
+    expect(turnC.subagentHasTimeoutSec).toBe(true)
     for (const titleSys of turnC.titleSystems) {
       expect(titleSys).not.toContain("## 指挥者模式")
     }
 
     const turn2 = await runTurn(sessionA.id, "Turn 2 orchestrator enabled")
     expect(turn2.primarySystem).toContain(JSON.stringify(ORCHESTRATOR_PROMPT).slice(1, -1))
+    expect(turn2.toolNames).toContain("orchestrator_interrupt")
+    expect(turn2.subagentHasTimeoutSec).toBe(true)
 
     // 3. Per-session isolation: sessionB remains OFF.
     const statusB = await rpc<OrchestratorStatus>("status", { sessionID: sessionB.id })
     expect(statusB).toEqual({ sessionID: sessionB.id, enabled: false })
     const turnB = await runTurn(sessionB.id, "Session B stays off")
     expect(turnB.primarySystem).not.toContain("## 指挥者模式")
+    expect(turnB.toolNames).not.toContain("orchestrator_interrupt")
+    expect(turnB.subagentHasTimeoutSec).toBe(false)
 
-    // 4. Child subagent isolation: child of enabled sessionA does NOT receive orchestrator prompt,
+    // 4. Child subagent isolation: child of enabled sessionA does NOT receive orchestrator prompt or tools,
     // and querying status on child resolves to root sessionA.
     const childA = await createSession({
       parentID: sessionA.id,
@@ -294,12 +554,16 @@ test("orchestrator plugin toggles per-session prompt injection while isolating o
     const turnChild = await runTurn(childA.id, "Subagent worker task")
     expect(turnChild.primarySystem).not.toContain("## 指挥者模式")
     expect(turnChild.primarySystem).not.toContain("glm-5.3-flash")
+    expect(turnChild.toolNames).not.toContain("orchestrator_interrupt")
+    expect(turnChild.subagentHasTimeoutSec).toBe(false)
 
-    // 5. Manual OFF mid-session on sessionA: next turn immediately drops orchestrator prompt.
+    // 5. Manual OFF mid-session on sessionA: next turn immediately drops orchestrator prompt and tools.
     const toggledOff = await rpc<OrchestratorStatus>("toggle", { sessionID: sessionA.id })
     expect(toggledOff).toEqual({ sessionID: sessionA.id, enabled: false })
     const turn3 = await runTurn(sessionA.id, "Turn 3 orchestrator disabled again")
     expect(turn3.primarySystem).not.toContain("## 指挥者模式")
+    expect(turn3.toolNames).not.toContain("orchestrator_interrupt")
+    expect(turn3.subagentHasTimeoutSec).toBe(false)
 
     // 6. TUI entrypoint command layer wired to the live server RPC and session APIs.
     mock.module("@opencode/plugin/tui", () => ({
@@ -392,6 +656,76 @@ test("orchestrator plugin toggles per-session prompt injection while isolating o
     expect(toasts.at(-1)?.message).toContain("已关闭")
     const turnHomeOff = await runTurn(homeCreatedID, "Disabled via TUI slash command")
     expect(turnHomeOff.primarySystem).not.toContain("## 指挥者模式")
+
+    // 7. Fast general subagent completes before timeoutSec and never fires a stale soft-timeout notice.
+    const fastParent = await createSession({
+      location: { directory: project },
+      model: { providerID: "mock", id: "claude-fable-5-2" },
+    })
+    await rpc<OrchestratorStatus>("set", { sessionID: fastParent.id, enabled: true })
+    await api("POST", `/api/session/${encodeURIComponent(fastParent.id)}/prompt`, { text: "LAUNCH_FAST_GENERAL" })
+    let fastMessagesText = ""
+    for (let i = 0; i < 80; i++) {
+      await api("POST", `/api/experimental/session/${encodeURIComponent(fastParent.id)}/wait`).catch(() => {})
+      fastMessagesText = JSON.stringify(await api<unknown>("GET", `/api/session/${encodeURIComponent(fastParent.id)}/message`))
+      if (fastMessagesText.includes("FAST_GENERAL_DONE")) break
+      await Bun.sleep(100)
+    }
+    expect(fastMessagesText).toContain("FAST_GENERAL_DONE")
+    await Bun.sleep(1800)
+    fastMessagesText = JSON.stringify(await api<unknown>("GET", `/api/session/${encodeURIComponent(fastParent.id)}/message`))
+    expect(fastMessagesText).not.toContain("<orchestrator-timeout")
+
+    // 8. Slow explore subagent does NOT trigger soft timeout even when timeoutSec is passed.
+    const exploreParent = await createSession({
+      location: { directory: project },
+      model: { providerID: "mock", id: "claude-fable-5-2" },
+    })
+    await rpc<OrchestratorStatus>("set", { sessionID: exploreParent.id, enabled: true })
+    await api("POST", `/api/session/${encodeURIComponent(exploreParent.id)}/prompt`, { text: "LAUNCH_SLOW_EXPLORE" })
+    let exploreMessagesText = ""
+    for (let i = 0; i < 100; i++) {
+      await api("POST", `/api/experimental/session/${encodeURIComponent(exploreParent.id)}/wait`).catch(() => {})
+      exploreMessagesText = JSON.stringify(
+        await api<unknown>("GET", `/api/session/${encodeURIComponent(exploreParent.id)}/message`),
+      )
+      if (exploreMessagesText.includes("SLOW_EXPLORE_DONE")) break
+      await Bun.sleep(100)
+    }
+    expect(exploreMessagesText).toContain("SLOW_EXPLORE_DONE")
+    expect(exploreMessagesText).not.toContain("<orchestrator-timeout")
+
+    // 9. Stuck general subagent triggers soft timeout without auto-killing, rejects cross-session interrupt,
+    // and cleanly interrupts its own child while suppressing subsequent timeouts.
+    const stuckParent = await createSession({
+      location: { directory: project },
+      model: { providerID: "mock", id: "claude-fable-5-2" },
+    })
+    await rpc<OrchestratorStatus>("set", { sessionID: stuckParent.id, enabled: true })
+    await api("POST", `/api/session/${encodeURIComponent(stuckParent.id)}/prompt`, { text: "LAUNCH_STUCK_GENERAL" })
+    let stuckMessagesText = ""
+    for (let i = 0; i < 120; i++) {
+      await api("POST", `/api/experimental/session/${encodeURIComponent(stuckParent.id)}/wait`).catch(() => {})
+      stuckMessagesText = JSON.stringify(
+        await api<unknown>("GET", `/api/session/${encodeURIComponent(stuckParent.id)}/message`),
+      )
+      if (stuckMessagesText.includes("ORCHESTRATOR_HANDLED_TIMEOUT")) break
+      await Bun.sleep(100)
+    }
+    writeFileSync(join(run, "stuck-parent-messages.json"), stuckMessagesText)
+    expect(stuckMessagesText).toContain("<orchestrator-timeout")
+    expect(stuckMessagesText).toContain("not a child session of orchestrator session")
+    expect(stuckMessagesText).toContain("已中止子会话")
+    expect(stuckMessagesText).toContain("git status")
+    expect(stuckMessagesText).toContain("ORCHESTRATOR_HANDLED_TIMEOUT")
+    expect(slowGeneralAborted).toBe(true)
+
+    const timeoutCountBefore = (stuckMessagesText.match(/<orchestrator-timeout/g) ?? []).length
+    await Bun.sleep(1200)
+    const stuckMessagesAfter = JSON.stringify(
+      await api<unknown>("GET", `/api/session/${encodeURIComponent(stuckParent.id)}/message`),
+    )
+    expect((stuckMessagesAfter.match(/<orchestrator-timeout/g) ?? []).length).toBe(timeoutCountBefore)
   } finally {
     serverProc.kill()
     await serverProc.exited
